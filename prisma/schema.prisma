@@ -1,0 +1,360 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  PROGRAM_MANAGER
+  PRODUCT_MANAGER
+  CONTRIBUTOR
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum GovernanceState {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  LOCKED
+  ARCHIVED
+}
+
+enum FeatureState {
+  DISCOVERY
+  READY
+  IN_PROGRESS
+  RELEASED
+  ARCHIVED
+}
+
+enum PriorityLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  SUBMIT
+  APPROVE
+  REJECT
+  LOCK
+  UNLOCK
+  ASSIGN
+  UNASSIGN
+  DEACTIVATE
+  REACTIVATE
+  ARCHIVE
+  FREEZE
+  UNFREEZE
+}
+
+enum EntityType {
+  PORTFOLIO
+  PRODUCT
+  FEATURE
+  RELEASE
+  USER
+  DOCUMENT
+  SYSTEM
+}
+
+model SystemConfig {
+  id         String   @id @default(uuid())
+  key        String   @unique @db.VarChar(100)
+  value      Json
+  updatedBy  String?  @map("updated_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("system_config")
+}
+
+model User {
+  id                  String      @id @default(uuid())
+  email               String      @unique
+  passwordHash        String      @map("password_hash")
+  name                String
+  role                UserRole    @default(VIEWER)
+  status              UserStatus  @default(ACTIVE)
+  avatarUrl           String?     @map("avatar_url")
+  assignedPortfolioId String?     @map("assigned_portfolio_id")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
+
+  assignedPortfolio   Portfolio?  @relation("UserAssignedPortfolio", fields: [assignedPortfolioId], references: [id], onDelete: SetNull)
+  
+  // Relations
+  portfoliosManaged   Portfolio[] @relation("PortfolioManager")
+  productsManaged     Product[]   @relation("ProductManager")
+  featuresOwned       Feature[]   @relation("FeatureOwner")
+  documentsUploaded   Document[]
+  auditLogs           AuditLog[]
+  
+  productManagerAssignments ProductManagerAssignment[]
+  featureContributorAssignments FeatureContributorAssignment[]
+  
+  // Additional relations for various actions
+  portfolioLockedBy   Portfolio[] @relation("PortfolioLockedBy")
+  portfolioRejectedBy Portfolio[] @relation("PortfolioRejectedBy")
+  portfolioSubmittedBy Portfolio[] @relation("PortfolioSubmittedBy")
+  portfolioApprovedBy Portfolio[] @relation("PortfolioApprovedBy")
+  portfolioArchivedBy Portfolio[] @relation("PortfolioArchivedBy")
+  
+  productLockedBy     Product[] @relation("ProductLockedBy")
+  productRejectedBy   Product[] @relation("ProductRejectedBy")
+  productSubmittedBy  Product[] @relation("ProductSubmittedBy")
+  productApprovedBy   Product[] @relation("ProductApprovedBy")
+  productArchivedBy   Product[] @relation("ProductArchivedBy")
+  
+  releaseLockedBy     Release[] @relation("ReleaseLockedBy")
+  releaseGoNogoSubmittedBy Release[] @relation("ReleaseGoNogoSubmittedBy")
+  releaseGoNogoDecidedBy Release[] @relation("ReleaseGoNogoDecidedBy")
+  
+  featureArchivedBy   Feature[] @relation("FeatureArchivedBy")
+  
+  productManagerAssignmentBy ProductManagerAssignment[] @relation("ProductManagerAssignmentBy")
+  featureContributorAssignmentBy FeatureContributorAssignment[] @relation("FeatureContributorAssignmentBy")
+
+  @@map("users")
+}
+
+model Portfolio {
+  id              String          @id @default(uuid())
+  name            String
+  code            String          @unique
+  description     String?
+  governanceState GovernanceState @default(DRAFT) @map("governance_state")
+  isLocked        Boolean         @default(false) @map("is_locked")
+  lockedAt        DateTime?       @map("locked_at")
+  lockedById      String?         @map("locked_by")
+  rejectionReason String?         @map("rejection_reason")
+  rejectedAt      DateTime?       @map("rejected_at")
+  rejectedById    String?         @map("rejected_by")
+  submittedAt     DateTime?       @map("submitted_at")
+  submittedById   String?         @map("submitted_by")
+  approvedAt      DateTime?       @map("approved_at")
+  approvedById    String?         @map("approved_by")
+  programManagerId String?        @map("program_manager_id")
+  priority        PriorityLevel?  @default(MEDIUM)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  archivedAt      DateTime?       @map("archived_at")
+  archivedById    String?         @map("archived_by")
+
+  programManager  User?           @relation("PortfolioManager", fields: [programManagerId], references: [id])
+  lockedBy        User?           @relation("PortfolioLockedBy", fields: [lockedById], references: [id])
+  rejectedBy      User?           @relation("PortfolioRejectedBy", fields: [rejectedById], references: [id])
+  submittedBy     User?           @relation("PortfolioSubmittedBy", fields: [submittedById], references: [id])
+  approvedBy      User?           @relation("PortfolioApprovedBy", fields: [approvedById], references: [id])
+  archivedBy      User?           @relation("PortfolioArchivedBy", fields: [archivedById], references: [id])
+  
+  products        Product[]
+  documents       Document[]
+  assignedUsers   User[]          @relation("UserAssignedPortfolio")
+
+  @@map("portfolios")
+}
+
+model Product {
+  id              String          @id @default(uuid())
+  portfolioId     String          @map("portfolio_id")
+  name            String
+  code            String
+  description     String?
+  businessValue   String?         @map("business_value")
+  targetClient    String?         @map("target_client")
+  endUser         String?         @map("end_user")
+  valueProposition String?        @map("value_proposition")
+  governanceState GovernanceState @default(DRAFT) @map("governance_state")
+  isLocked        Boolean         @default(false) @map("is_locked")
+  lockedAt        DateTime?       @map("locked_at")
+  lockedById      String?         @map("locked_by")
+  rejectionReason String?         @map("rejection_reason")
+  rejectedAt      DateTime?       @map("rejected_at")
+  rejectedById    String?         @map("rejected_by")
+  submittedAt     DateTime?       @map("submitted_at")
+  submittedById   String?         @map("submitted_by")
+  approvedAt      DateTime?       @map("approved_at")
+  approvedById    String?         @map("approved_by")
+  productManagerId String?        @map("product_manager_id")
+  priority        PriorityLevel?  @default(MEDIUM)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  archivedAt      DateTime?       @map("archived_at")
+  archivedById    String?         @map("archived_by")
+
+  portfolio       Portfolio       @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  productManager  User?           @relation("ProductManager", fields: [productManagerId], references: [id])
+  lockedBy        User?           @relation("ProductLockedBy", fields: [lockedById], references: [id])
+  rejectedBy      User?           @relation("ProductRejectedBy", fields: [rejectedById], references: [id])
+  submittedBy     User?           @relation("ProductSubmittedBy", fields: [submittedById], references: [id])
+  approvedBy      User?           @relation("ProductApprovedBy", fields: [approvedById], references: [id])
+  archivedBy      User?           @relation("ProductArchivedBy", fields: [archivedById], references: [id])
+
+  releases        Release[]
+  features        Feature[]
+  documents       Document[]
+  productManagerAssignments ProductManagerAssignment[]
+
+  @@unique([portfolioId, code])
+  @@map("products")
+}
+
+model ProductManagerAssignment {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  productId   String   @map("product_id")
+  assignedAt  DateTime @default(now()) @map("assigned_at")
+  assignedById String? @map("assigned_by")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  assignedBy  User?    @relation("ProductManagerAssignmentBy", fields: [assignedById], references: [id])
+
+  @@unique([userId, productId])
+  @@map("product_manager_assignments")
+}
+
+model Release {
+  id                  String          @id @default(uuid())
+  productId           String          @map("product_id")
+  version             String
+  name                String
+  description         String?
+  startDate           DateTime        @map("start_date") @db.Date
+  endDate             DateTime        @map("end_date") @db.Date
+  governanceState     GovernanceState @default(DRAFT) @map("governance_state")
+  isLocked            Boolean         @default(false) @map("is_locked")
+  lockedAt            DateTime?       @map("locked_at")
+  lockedById          String?         @map("locked_by")
+  goNogoSubmitted     Boolean         @default(false) @map("go_nogo_submitted")
+  goNogoSubmittedAt   DateTime?       @map("go_nogo_submitted_at")
+  goNogoSubmittedById  String?        @map("go_nogo_submitted_by")
+  goNogoDecision      String?         @map("go_nogo_decision") @db.VarChar(10)
+  goNogoDecidedAt     DateTime?       @map("go_nogo_decided_at")
+  goNogoDecidedById   String?         @map("go_nogo_decided_by")
+  goNogoNotes         String?         @map("go_nogo_notes")
+  readinessChecklist  Json            @default("[]") @map("readiness_checklist")
+  postReleaseNotes    String?         @map("post_release_notes")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  product             Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  lockedBy            User?           @relation("ReleaseLockedBy", fields: [lockedById], references: [id])
+  goNogoSubmittedBy   User?           @relation("ReleaseGoNogoSubmittedBy", fields: [goNogoSubmittedById], references: [id])
+  goNogoDecidedBy     User?           @relation("ReleaseGoNogoDecidedBy", fields: [goNogoDecidedById], references: [id])
+
+  features            Feature[]
+  documents           Document[]
+
+  @@unique([productId, version])
+  @@map("releases")
+}
+
+model Feature {
+  id                  String        @id @default(uuid())
+  productId           String        @map("product_id")
+  releaseId           String?       @map("release_id")
+  name                String
+  description         String?
+  targetUser          String?       @map("target_user")
+  customerSegmentation String?      @map("customer_segmentation")
+  valueProposition    String?       @map("value_proposition")
+  businessModel       String?       @map("business_model")
+  risksChallenges     String?       @map("risks_challenges")
+  startDate           DateTime?     @map("start_date") @db.Date
+  endDate             DateTime?      @map("end_date") @db.Date
+  state               FeatureState  @default(DISCOVERY)
+  ownerId             String?       @map("owner_id")
+  priority            PriorityLevel? @default(MEDIUM)
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+  archivedAt          DateTime?     @map("archived_at")
+  archivedById        String?       @map("archived_by")
+
+  product             Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  release             Release?      @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+  owner               User?          @relation("FeatureOwner", fields: [ownerId], references: [id])
+  archivedBy          User?         @relation("FeatureArchivedBy", fields: [archivedById], references: [id])
+
+  documents           Document[]
+  featureContributorAssignments FeatureContributorAssignment[]
+
+  @@map("features")
+}
+
+model FeatureContributorAssignment {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  featureId   String   @map("feature_id")
+  assignedAt  DateTime @default(now()) @map("assigned_at")
+  assignedById String? @map("assigned_by")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature     Feature  @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  assignedBy  User?    @relation("FeatureContributorAssignmentBy", fields: [assignedById], references: [id])
+
+  @@unique([userId, featureId])
+  @@map("feature_contributor_assignments")
+}
+
+model Document {
+  id          String   @id @default(uuid())
+  name        String
+  filePath    String   @map("file_path")
+  fileType    String?  @map("file_type") @db.VarChar(50)
+  fileSize    BigInt?  @map("file_size")
+  portfolioId String?  @map("portfolio_id")
+  productId   String?  @map("product_id")
+  featureId   String?  @map("feature_id")
+  releaseId  String?  @map("release_id")
+  uploadedById String  @map("uploaded_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  portfolio   Portfolio? @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  product     Product?   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  feature     Feature?   @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  release     Release?   @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  uploadedBy  User       @relation(fields: [uploadedById], references: [id])
+
+  @@map("documents")
+}
+
+model AuditLog {
+  id            String      @id @default(uuid())
+  timestamp     DateTime    @default(now())
+  actorUserId   String?     @map("actor_user_id")
+  actorEmail    String?     @map("actor_email") @db.VarChar(255)
+  actorName     String?     @map("actor_name") @db.VarChar(255)
+  action        AuditAction
+  entityType    EntityType  @map("entity_type")
+  entityId      String?     @map("entity_id")
+  entityName    String?     @map("entity_name") @db.VarChar(255)
+  changedFields Json?       @map("changed_fields")
+  comment       String?
+  ipAddress     String?     @map("ip_address") @db.VarChar(45)
+  userAgent     String?     @map("user_agent")
+
+  actor         User?       @relation(fields: [actorUserId], references: [id])
+
+  @@map("audit_log")
+}

@@ -1,0 +1,93 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { verifyPassword, generateToken } from '@/lib/auth'
+import { createAuditLog } from '@/lib/audit'
+import { AuditAction, EntityType } from '@/types'
+
+export async function POST(request: NextRequest) {
+  try {
+    const { email, password } = await request.json()
+
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: 'Email and password are required' },
+        { status: 400 }
+      )
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+    })
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
+        { status: 401 }
+      )
+    }
+
+    if (user.status !== 'ACTIVE') {
+      return NextResponse.json(
+        { error: 'Account is inactive' },
+        { status: 403 }
+      )
+    }
+
+    const isValid = await verifyPassword(password, user.passwordHash)
+    if (!isValid) {
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
+        { status: 401 }
+      )
+    }
+
+    const token = generateToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    })
+
+    // Create audit log
+    await createAuditLog({
+      actor: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        status: user.status,
+      },
+      action: AuditAction.CREATE,
+      entityType: EntityType.USER,
+      entityId: user.id,
+      entityName: user.email,
+      comment: 'User logged in',
+    })
+
+    const response = NextResponse.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        status: user.status,
+        avatarUrl: user.avatarUrl,
+        assignedPortfolioId: user.assignedPortfolioId,
+      },
+    })
+
+    response.cookies.set('auth-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    })
+
+    return response
+  } catch (error) {
+    console.error('Login error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
