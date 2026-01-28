@@ -22,12 +22,28 @@ export async function middleware(request: NextRequest) {
 
   const payload = verifyToken(token)
   if (!payload) {
+    // Log why token verification failed (for debugging)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('❌ Token verification failed for path:', pathname)
+    }
+    
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     const response = NextResponse.redirect(new URL('/login', request.url))
-    response.cookies.delete('auth-token')
+    // Delete cookie by setting it to empty with expired date
+    response.cookies.set('auth-token', '', {
+      expires: new Date(0),
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+    })
     return response
+  }
+  
+  // Log successful token verification (for debugging)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('✅ Token verified for user:', payload.email, 'on path:', pathname)
   }
 
   return NextResponse.next()

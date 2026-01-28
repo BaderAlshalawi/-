@@ -8,7 +8,8 @@ import {
   EntityType
 } from '@prisma/client'
 
-export type { UserRole, UserStatus, GovernanceState, FeatureState, PriorityLevel, AuditAction, EntityType }
+// Export enums - Prisma enums work as both types and values
+export { UserRole, UserStatus, GovernanceState, FeatureState, PriorityLevel, AuditAction, EntityType }
 
 export interface User {
   id: string

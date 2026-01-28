@@ -27,11 +27,11 @@ export async function canPerform(
   const { role } = user
 
   // Super Admin can do everything
-  if (role === 'SUPER_ADMIN') return true
+  if (role === UserRole.SUPER_ADMIN) return true
 
   // Check system freeze (except Super Admin)
   const systemFrozen = await isSystemFrozen()
-  if (systemFrozen && role !== 'SUPER_ADMIN') return false
+  if (systemFrozen) return false
 
   switch (permission) {
     // PORTFOLIO PERMISSIONS
@@ -61,7 +61,7 @@ export async function canPerform(
           where: { id: context.productId },
           select: { portfolioId: true },
         })
-        return product?.portfolioId && user.assignedPortfolioId === product.portfolioId
+        return !!(product?.portfolioId && user.assignedPortfolioId === product.portfolioId)
       }
       if (role === 'PRODUCT_MANAGER') {
         if (!context?.productId) return false
@@ -81,7 +81,7 @@ export async function canPerform(
         where: { id: context.productId },
         select: { portfolioId: true },
       })
-      return product?.portfolioId && user.assignedPortfolioId === product.portfolioId
+      return !!(product?.portfolioId && user.assignedPortfolioId === product.portfolioId)
 
     case 'product:lock':
       if (role !== 'PROGRAM_MANAGER') return false
@@ -90,7 +90,7 @@ export async function canPerform(
         where: { id: context.productId },
         select: { portfolioId: true },
       })
-      return productForLock?.portfolioId && user.assignedPortfolioId === productForLock.portfolioId
+      return !!(productForLock?.portfolioId && user.assignedPortfolioId === productForLock.portfolioId)
 
     // FEATURE PERMISSIONS
     case 'feature:create':
@@ -154,11 +154,11 @@ export async function canPerform(
     case 'user:edit':
     case 'user:deactivate':
     case 'user:assign':
-      return role === 'ADMIN' || role === 'SUPER_ADMIN'
+      return role === UserRole.ADMIN
 
     // AUDIT
     case 'audit:view':
-      return role === 'ADMIN' || role === 'SUPER_ADMIN'
+      return role === UserRole.ADMIN
 
     // SYSTEM
     case 'system:freeze':
@@ -200,5 +200,9 @@ async function isAssignedToFeature(userId: string, featureId: string): Promise<b
 
 async function isSystemFrozen(): Promise<boolean> {
   const config = await getSystemConfig('system_frozen')
-  return config?.value?.frozen === true
+  if (!config?.value) return false
+  if (typeof config.value === 'object' && config.value !== null && !Array.isArray(config.value)) {
+    return (config.value as { frozen?: boolean })?.frozen === true
+  }
+  return false
 }

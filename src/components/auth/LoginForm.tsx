@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -29,19 +29,19 @@ export function LoginForm() {
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    mode: 'onSubmit', // Only show validation after submit
   })
 
-  const onSubmit = async (data: LoginFormData) => {
+  const doLogin = useCallback(async (data: LoginFormData) => {
     setIsLoading(true)
     setError(null)
 
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
+        credentials: 'include',
       })
 
       const result = await response.json()
@@ -54,15 +54,23 @@ export function LoginForm() {
 
       setUser(result.user)
       router.push('/dashboard')
-      router.refresh()
     } catch (err) {
-      setError('An unexpected error occurred')
+      console.error('Login error:', err)
+      setError('An unexpected error occurred. Please try again.')
       setIsLoading(false)
     }
-  }
+  }, [setUser, router])
+
+  const onSubmit = useCallback(
+    (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault()
+      handleSubmit(doLogin)(e)
+    },
+    [handleSubmit, doLogin]
+  )
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-6">
+    <form className="mt-8 space-y-6" onSubmit={onSubmit} noValidate>
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
           {error}
@@ -76,6 +84,7 @@ export function LoginForm() {
             id="email"
             type="email"
             autoComplete="email"
+            placeholder="e.g. superadmin@lean.com"
             {...register('email')}
             className="mt-1"
           />
@@ -90,6 +99,7 @@ export function LoginForm() {
             id="password"
             type="password"
             autoComplete="current-password"
+            placeholder="e.g. Admin@123"
             {...register('password')}
             className="mt-1"
           />
@@ -100,13 +110,17 @@ export function LoginForm() {
       </div>
 
       <div>
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={isLoading}
+        >
           {isLoading ? 'Signing in...' : 'Sign in'}
         </Button>
       </div>
 
-      <div className="text-xs text-gray-500 text-center">
-        <p>Test accounts:</p>
+      <div className="text-xs text-gray-500 text-center select-none">
+        <p className="font-medium">Test accounts (use these exact values):</p>
         <p>superadmin@lean.com / Admin@123</p>
         <p>admin@lean.com / Admin@123</p>
         <p>pm.tnt@lean.com / User@123</p>

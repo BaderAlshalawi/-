@@ -47,21 +47,26 @@ export async function POST(request: NextRequest) {
       role: user.role,
     })
 
-    // Create audit log
-    await createAuditLog({
-      actor: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        status: user.status,
-      },
-      action: AuditAction.CREATE,
-      entityType: EntityType.USER,
-      entityId: user.id,
-      entityName: user.email,
-      comment: 'User logged in',
-    })
+    // Create audit log (don't fail login if audit log fails)
+    try {
+      await createAuditLog({
+        actor: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          status: user.status,
+        },
+        action: AuditAction.CREATE,
+        entityType: EntityType.USER,
+        entityId: user.id,
+        entityName: user.email,
+        comment: 'User logged in',
+      })
+    } catch (auditError) {
+      // Log error but don't fail login
+      console.error('Audit log error (non-blocking):', auditError)
+    }
 
     const response = NextResponse.json({
       user: {
@@ -75,12 +80,19 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Set cookie with proper configuration
     response.cookies.set('auth-token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/', // Ensure cookie is available for all paths
     })
+    
+    // Log token creation for debugging (remove in production)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ Token generated and cookie set for user:', user.email)
+    }
 
     return response
   } catch (error) {
