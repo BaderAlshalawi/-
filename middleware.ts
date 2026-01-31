@@ -6,7 +6,12 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public routes
-  if (pathname === '/login' || pathname.startsWith('/api/auth/login')) {
+  if (
+    pathname === '/login' ||
+    pathname === '/signup' ||
+    pathname.startsWith('/api/auth/login') ||
+    pathname.startsWith('/api/auth/register')
+  ) {
     return NextResponse.next()
   }
 

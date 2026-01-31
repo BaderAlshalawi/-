@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useCallback, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -19,9 +19,18 @@ type LoginFormData = z.infer<typeof loginSchema>
 
 export function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const setUser = useAuthStore((state) => state.setUser)
+
+  // Show success message if redirected from signup
+  useEffect(() => {
+    if (searchParams.get('registered') === 'true') {
+      setSuccessMessage('Account created successfully! Please sign in.')
+    }
+  }, [searchParams])
 
   const {
     register,
@@ -71,6 +80,12 @@ export function LoginForm() {
 
   return (
     <form className="mt-8 space-y-6" onSubmit={onSubmit} noValidate>
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+          {successMessage}
+        </div>
+      )}
+
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
           {error}
@@ -117,6 +132,16 @@ export function LoginForm() {
         >
           {isLoading ? 'Signing in...' : 'Sign in'}
         </Button>
+      </div>
+
+      <div className="text-sm text-center">
+        <span className="text-gray-600">Don't have an account? </span>
+        <a
+          href="/signup"
+          className="font-medium text-blue-600 hover:text-blue-500"
+        >
+          Sign up
+        </a>
       </div>
 
       <div className="text-xs text-gray-500 text-center select-none">

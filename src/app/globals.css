@@ -57,3 +57,125 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom Styles from Reference Design */
+@layer utilities {
+  /* Sidebar Transitions */
+  .sidebar {
+    transition: width 0.3s ease;
+    overflow-y: auto;
+  }
+
+  .sidebar-collapsed {
+    width: 80px;
+  }
+
+  .sidebar-expanded {
+    width: 280px;
+  }
+
+  /* Menu Item Animations */
+  .menu-item {
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+
+  .menu-item:hover {
+    background: rgba(102, 126, 234, 0.1);
+    transform: translateX(4px);
+  }
+
+  body[dir="rtl"] .menu-item:hover {
+    transform: translateX(-4px);
+  }
+
+  .menu-item.active {
+    background: rgba(102, 126, 234, 0.15);
+    border-right: 4px solid #667eea;
+  }
+
+  body[dir="rtl"] .menu-item.active {
+    border-right: none;
+    border-left: 4px solid #667eea;
+  }
+
+  /* Card Hover Effects */
+  .card-hover {
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Custom Scrollbar */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+
+  /* Modal Overlay */
+  .modal-overlay {
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+  }
+
+  /* Status Badge */
+  .status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  /* Chart Container */
+  .chart-container {
+    position: relative;
+    height: 300px;
+  }
+
+  /* Responsive Breakpoints */
+  @media (max-width: 768px) {
+    .sidebar-expanded {
+      width: 240px;
+    }
+
+    .hide-mobile {
+      display: none !important;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .sidebar {
+      position: fixed;
+      z-index: 40;
+      height: 100vh;
+    }
+
+    .sidebar-collapsed {
+      width: 0;
+    }
+
+    .mobile-text-sm {
+      font-size: 0.875rem;
+    }
+
+    .mobile-p-2 {
+      padding: 0.5rem;
+    }
+  }
+}
