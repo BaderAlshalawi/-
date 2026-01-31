@@ -4,6 +4,9 @@ import { useEffect, useState, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuthStore } from '@/store/authStore'
 import { useRouter } from 'next/navigation'
+import { LineChart } from '@/components/charts/LineChart'
+import { DoughnutChart } from '@/components/charts/DoughnutChart'
+import { BarChart } from '@/components/charts/BarChart'
 
 type TimePeriod = 'year' | 'month' | 'week'
 
@@ -58,6 +61,23 @@ export default function DashboardPage() {
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(val)
+
+  // Mock chart data
+  const chartData = useMemo(() => ({
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    revenue: [150000, 185000, 210000, 195000, 230000, 250000],
+    cost: [120000, 135000, 145000, 155000, 160000, 170000]
+  }), [])
+
+  const costBreakdownData = useMemo(() => ({
+    labels: ['Resources', 'CAPEX', 'OPEX'],
+    values: [currentMetrics.cost * 0.5, currentMetrics.cost * 0.3, currentMetrics.cost * 0.2]
+  }), [currentMetrics.cost])
+
+  const portfolioRevenueData = useMemo(() => ({
+    labels: ['Licensing', 'Track & Trace', 'Practitioner Services', 'Insurance Services'],
+    values: [850000, 620000, 380000, 250000]
+  }), [])
 
   if (!user) {
     return <div>Loading...</div>
@@ -467,7 +487,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Charts Placeholder */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -475,8 +495,8 @@ export default function DashboardPage() {
             <CardDescription>Monthly performance overview</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-              <p className="text-gray-500 text-sm">Chart integration ready (Chart.js)</p>
+            <div className="h-64">
+              <LineChart data={chartData} />
             </div>
           </CardContent>
         </Card>
@@ -487,12 +507,25 @@ export default function DashboardPage() {
             <CardDescription>Resources, CAPEX, and OPEX breakdown</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-              <p className="text-gray-500 text-sm">Chart integration ready (Chart.js)</p>
+            <div className="h-64">
+              <DoughnutChart data={costBreakdownData} />
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Portfolio Revenue Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Portfolio Revenue Comparison</CardTitle>
+          <CardDescription>Revenue distribution across portfolios</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64">
+            <BarChart data={portfolioRevenueData} />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Action Required Section */}
       <Card>
