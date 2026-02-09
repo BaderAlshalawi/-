@@ -128,10 +128,10 @@ export default function ProductsPage() {
                       {product.portfolio?.name || 'N/A'}
                     </span>
                   </div>
-                  {product.owner && (
+                  {product.productManager && (
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-600">Owner:</span>
-                      <span className="font-medium text-gray-900">{product.owner}</span>
+                      <span className="font-medium text-gray-900">{product.productManager.name}</span>
                     </div>
                   )}
                 </div>

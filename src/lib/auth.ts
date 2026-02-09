@@ -34,7 +34,7 @@ export function generateToken(payload: JWTPayload): string {
   if (!JWT_SECRET || JWT_SECRET.length < 32) {
     throw new Error('JWT_SECRET must be at least 32 characters long')
   }
-  
+
   try {
     // Type assertion needed due to jsonwebtoken type definitions
     // expiresIn accepts string (like '7d') which is valid
@@ -61,7 +61,7 @@ export function verifyToken(token: string): JWTPayload | null {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload
-    
+
     // Validate payload structure
     if (!decoded.userId || !decoded.email || !decoded.role) {
       console.error('Invalid token payload structure')
@@ -84,7 +84,14 @@ export function verifyToken(token: string): JWTPayload | null {
 
 export async function getCurrentUser(request: NextRequest) {
   try {
-    const token = request.cookies.get('auth-token')?.value
+    // Support both cookie (browser) and Authorization Bearer (API clients / tests)
+    let token = request.cookies.get('auth-token')?.value
+    if (!token) {
+      const authHeader = request.headers.get('authorization')
+      if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.slice(7)
+      }
+    }
 
     if (!token) {
       return null
@@ -119,12 +126,12 @@ export async function getCurrentUser(request: NextRequest) {
       // If database is unavailable, log error and return null
       // This ensures security - we can't verify user status without database
       console.error('Database error in getCurrentUser:', dbError?.message || dbError)
-      
+
       // Check if it's a connection error
       if (dbError?.code === 'P1001' || dbError?.message?.includes('Can\'t reach database')) {
         console.error('Database connection failed - user authentication unavailable')
       }
-      
+
       // Return null to force re-authentication when database is down
       // This is more secure than returning a fallback user
       return null

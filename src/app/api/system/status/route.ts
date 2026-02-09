@@ -10,11 +10,12 @@ export async function GET(request: NextRequest) {
     }
 
     const config = await getSystemConfig('system_frozen')
-    const frozen = config?.value?.frozen === true
+    const value = config?.value as { frozen?: boolean; reason?: string } | null
+    const frozen = value?.frozen === true
 
     return NextResponse.json({
       frozen,
-      reason: config?.value?.reason || null,
+      reason: value?.reason ?? null,
     })
   } catch (error) {
     console.error('Get system status error:', error)

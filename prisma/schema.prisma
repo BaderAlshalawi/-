@@ -107,6 +107,7 @@ model User {
   featuresOwned       Feature[]   @relation("FeatureOwner")
   documentsUploaded   Document[]
   auditLogs           AuditLog[]
+  costEntries         CostEntry[]
   
   productManagerAssignments ProductManagerAssignment[]
   featureContributorAssignments FeatureContributorAssignment[]
@@ -170,6 +171,10 @@ model Portfolio {
   documents       Document[]
   assignedUsers   User[]          @relation("UserAssignedPortfolio")
 
+  estimatedBudget Decimal?        @db.Decimal(15, 2) @map("estimated_budget")
+  actualCost      Decimal?        @db.Decimal(15, 2) @default(0) @map("actual_cost")
+  costCurrency    String?         @default("USD") @db.VarChar(3) @map("cost_currency")
+
   @@map("portfolios")
 }
 
@@ -214,6 +219,10 @@ model Product {
   documents       Document[]
   productManagerAssignments ProductManagerAssignment[]
 
+  estimatedCost   Decimal?        @db.Decimal(15, 2) @map("estimated_cost")
+  actualCost      Decimal?        @db.Decimal(15, 2) @default(0) @map("actual_cost")
+  costCurrency    String?         @default("USD") @db.VarChar(3) @map("cost_currency")
+
   @@unique([portfolioId, code])
   @@map("products")
 }
@@ -254,6 +263,9 @@ model Release {
   goNogoNotes         String?         @map("go_nogo_notes")
   readinessChecklist  Json            @default("[]") @map("readiness_checklist")
   postReleaseNotes    String?         @map("post_release_notes")
+  estimatedCost       Decimal?        @db.Decimal(15, 2) @map("estimated_cost")
+  actualCost          Decimal?        @db.Decimal(15, 2) @default(0) @map("actual_cost")
+  costCurrency        String?         @default("USD") @db.VarChar(3) @map("cost_currency")
   createdAt           DateTime        @default(now()) @map("created_at")
   updatedAt           DateTime        @updatedAt @map("updated_at")
 
@@ -285,6 +297,10 @@ model Feature {
   state               FeatureState  @default(DISCOVERY)
   ownerId             String?       @map("owner_id")
   priority            PriorityLevel? @default(MEDIUM)
+  estimatedEffort     Decimal?      @db.Decimal(10, 2) @map("estimated_effort")
+  estimatedCost       Decimal?      @db.Decimal(15, 2) @map("estimated_cost")
+  actualCost          Decimal?      @db.Decimal(15, 2) @default(0) @map("actual_cost")
+  costCurrency        String?       @default("USD") @db.VarChar(3) @map("cost_currency")
   createdAt           DateTime      @default(now()) @map("created_at")
   updatedAt           DateTime      @updatedAt @map("updated_at")
   archivedAt          DateTime?     @map("archived_at")
@@ -356,4 +372,23 @@ model AuditLog {
   actor         User?       @relation(fields: [actorUserId], references: [id])
 
   @@map("audit_log")
+}
+
+model CostEntry {
+  id              String      @id @default(uuid())
+  entityType      EntityType  @map("entity_type")
+  entityId        String      @map("entity_id")
+  description     String
+  amount          Decimal     @db.Decimal(15, 2)
+  currency        String      @default("USD") @db.VarChar(3)
+  category        String      @db.VarChar(50) // LABOR, INFRASTRUCTURE, LICENSING, THIRD_PARTY, OTHER
+  date            DateTime    @db.Date
+  recordedById    String      @map("recorded_by")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  recordedBy      User        @relation(fields: [recordedById], references: [id], onDelete: Restrict)
+
+  @@index([entityType, entityId])
+  @@map("cost_entries")
 }

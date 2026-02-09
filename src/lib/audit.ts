@@ -1,9 +1,9 @@
 import { prisma } from './prisma'
-import { AuditAction, EntityType, User } from '@/types'
+import { AuditAction, EntityType } from '@/types'
 import { headers } from 'next/headers'
 
 export interface AuditLogInput {
-  actor: User
+  actor: Pick<import('@/types').User, 'id' | 'email' | 'name' | 'role' | 'status'>
   action: AuditAction
   entityType: EntityType
   entityId?: string
@@ -26,8 +26,8 @@ export async function createAuditLog(input: AuditLogInput): Promise<void> {
       entityType: input.entityType,
       entityId: input.entityId,
       entityName: input.entityName,
-      changedFields: input.changedFields || null,
-      comment: input.comment || null,
+      changedFields: input.changedFields ?? undefined,
+      comment: input.comment ?? undefined,
       ipAddress,
       userAgent,
     },

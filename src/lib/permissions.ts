@@ -1,6 +1,10 @@
-import { User, UserRole } from '@/types'
+import type { User } from '@/types'
+import { UserRole } from '@/types'
 import { prisma } from './prisma'
 import { getSystemConfig } from './system'
+
+/** Minimal user shape needed for permission checks (e.g. from getCurrentUser) */
+export type UserLike = Pick<User, 'id' | 'role' | 'assignedPortfolioId'>
 
 export type Permission =
   | 'portfolio:create' | 'portfolio:edit' | 'portfolio:submit' | 'portfolio:approve' | 'portfolio:lock' | 'portfolio:archive'
@@ -8,6 +12,7 @@ export type Permission =
   | 'feature:create' | 'feature:edit' | 'feature:transition' | 'feature:archive'
   | 'release:create' | 'release:edit' | 'release:submit-go-nogo' | 'release:approve-go' | 'release:lock'
   | 'document:upload' | 'document:delete'
+  | 'cost:create' | 'cost:edit' | 'cost:delete' | 'cost:view'
   | 'user:create' | 'user:edit' | 'user:deactivate' | 'user:assign'
   | 'audit:view'
   | 'system:freeze'
@@ -20,7 +25,7 @@ interface PermissionContext {
 }
 
 export async function canPerform(
-  user: User,
+  user: UserLike,
   permission: Permission,
   context?: PermissionContext
 ): Promise<boolean> {
@@ -148,6 +153,14 @@ export async function canPerform(
         return await isAssignedToProduct(user.id, context.productId)
       }
       return false
+
+    // COST
+    case 'cost:view':
+      return true // any authenticated user can view costs for entities they can see
+    case 'cost:create':
+    case 'cost:edit':
+    case 'cost:delete':
+      return role !== UserRole.VIEWER
 
     // USER MANAGEMENT
     case 'user:create':

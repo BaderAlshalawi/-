@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { LoginForm } from '@/components/auth/LoginForm'
 
 export default function LoginPage() {
@@ -22,7 +22,9 @@ export default function LoginPage() {
             Sign in to your account
           </p>
         </div>
-        <LoginForm />
+        <Suspense fallback={<div className="animate-pulse h-32 bg-gray-100 rounded" />}>
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   )

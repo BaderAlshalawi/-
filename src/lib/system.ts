@@ -24,7 +24,8 @@ export async function setSystemConfig(key: string, value: any, updatedBy?: strin
 
 export async function isSystemFrozen(): Promise<boolean> {
   const config = await getSystemConfig('system_frozen')
-  return config?.value?.frozen === true
+  const value = config?.value as { frozen?: boolean } | null | undefined
+  return value?.frozen === true
 }
 
 export async function freezeSystem(reason: string, frozenBy: string) {

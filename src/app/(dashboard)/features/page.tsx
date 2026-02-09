@@ -36,8 +36,8 @@ export default function FeaturesPage() {
     )
   }
 
-  const completedFeatures = features.filter((f) => f.state === 'DELIVERED' || f.state === 'DEPLOYED')
-  const inProgressFeatures = features.filter((f) => f.state === 'IN_DEVELOPMENT' || f.state === 'IN_TESTING')
+  const completedFeatures = features.filter((f) => f.state === 'RELEASED' || f.state === 'ARCHIVED')
+  const inProgressFeatures = features.filter((f) => f.state === 'IN_PROGRESS' || f.state === 'READY')
 
   return (
     <div className="space-y-6">
@@ -141,7 +141,7 @@ export default function FeaturesPage() {
                   {feature.owner && (
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-600">Owner:</span>
-                      <span className="font-medium text-gray-900">{feature.owner}</span>
+                      <span className="font-medium text-gray-900">{feature.owner?.name ?? feature.ownerId ?? '—'}</span>
                     </div>
                   )}
                   {feature.startDate && (

@@ -146,6 +146,37 @@ npm run build
 npm start
 ```
 
+## 🧪 Testing
+
+- **Unit / integration tests** (Vitest): `npm run test`  
+  By default, DB-dependent tests are skipped so the suite passes without a running database. To run the full suite (auth, API, RBAC, governance, costs) against your DB, seed first then run without `SKIP_DB_TESTS`:
+  ```bash
+  npm run db:seed
+  npm run test:integration
+  ```
+- **Watch mode**: `npm run test:watch`
+- **Coverage**: `npm run test:coverage`
+- **E2E** (Playwright): `npm run test:e2e` (starts dev server if needed)
+- **All**: `npm run test:all`
+
+Test credentials match seed: `admin@lean.com` / `Admin@123`, `viewer@lean.com` / `User@123`, etc.
+
+## 🚀 Deploy to Vercel
+
+1. Install Vercel CLI: `npm i -g vercel`
+2. Login: `vercel login`
+3. From project root: `vercel` (first time), then set env vars in Vercel dashboard or:
+   ```bash
+   vercel env add DATABASE_URL
+   vercel env add DIRECT_URL
+   vercel env add JWT_SECRET
+   vercel env add JWT_EXPIRES_IN
+   vercel env add NEXT_PUBLIC_APP_URL
+   ```
+4. Deploy production: `vercel --prod`
+
+`vercel.json` is configured with security headers and `postinstall: prisma generate`. Generate a strong `JWT_SECRET` for production (e.g. `openssl rand -base64 64`).
+
 ## 🔒 Security Notes
 
 - JWT tokens are stored in httpOnly cookies

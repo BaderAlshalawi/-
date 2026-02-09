@@ -50,13 +50,7 @@ export async function POST(request: NextRequest) {
     // Create audit log (don't fail login if audit log fails)
     try {
       await createAuditLog({
-        actor: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          status: user.status,
-        },
+        actor: user,
         action: AuditAction.CREATE,
         entityType: EntityType.USER,
         entityId: user.id,
@@ -78,6 +72,7 @@ export async function POST(request: NextRequest) {
         avatarUrl: user.avatarUrl,
         assignedPortfolioId: user.assignedPortfolioId,
       },
+      token, // For API clients and tests using Authorization: Bearer
     })
 
     // Set cookie with proper configuration
@@ -88,7 +83,7 @@ export async function POST(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/', // Ensure cookie is available for all paths
     })
-    
+
     // Log token creation for debugging (remove in production)
     if (process.env.NODE_ENV === 'development') {
       console.log('✅ Token generated and cookie set for user:', user.email)
