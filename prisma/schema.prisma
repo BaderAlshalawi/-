@@ -12,10 +12,8 @@ datasource db {
 }
 enum UserRole {
   SUPER_ADMIN
-  ADMIN
   PROGRAM_MANAGER
   PRODUCT_MANAGER
-  CONTRIBUTOR
   VIEWER
 }
 
@@ -74,6 +72,27 @@ enum EntityType {
   USER
   DOCUMENT
   SYSTEM
+  RESOURCE
+  RESOURCE_ASSIGNMENT
+  COST_ENTRY
+  RATE_CARD
+  HOSTING_COST
+  LOOKUP
+}
+
+enum CostCategory {
+  LABOR
+  INFRASTRUCTURE
+  LICENSING
+  THIRD_PARTY
+  OTHER
+}
+
+enum HostingCostCategory {
+  LICENSE
+  INFRA
+  OTHERS
+  INDIRECT
 }
 
 model SystemConfig {
@@ -96,6 +115,8 @@ model User {
   status              UserStatus  @default(ACTIVE)
   avatarUrl           String?     @map("avatar_url")
   assignedPortfolioId String?     @map("assigned_portfolio_id")
+  costRate            Decimal?    @db.Decimal(15, 2) @map("cost_rate")
+  costRateCurrency    String?     @default("SAR") @db.VarChar(3) @map("cost_rate_currency")
   createdAt           DateTime    @default(now()) @map("created_at")
   updatedAt           DateTime    @updatedAt @map("updated_at")
 
@@ -110,8 +131,9 @@ model User {
   costEntries         CostEntry[]
   
   productManagerAssignments ProductManagerAssignment[]
-  featureContributorAssignments FeatureContributorAssignment[]
-  
+  resourceAssignments ResourceAssignment[]
+  resourceAssignmentsCreated ResourceAssignment[] @relation("ResourceAssignmentBy")
+
   // Additional relations for various actions
   portfolioLockedBy   Portfolio[] @relation("PortfolioLockedBy")
   portfolioRejectedBy Portfolio[] @relation("PortfolioRejectedBy")
@@ -132,7 +154,6 @@ model User {
   featureArchivedBy   Feature[] @relation("FeatureArchivedBy")
   
   productManagerAssignmentBy ProductManagerAssignment[] @relation("ProductManagerAssignmentBy")
-  featureContributorAssignmentBy FeatureContributorAssignment[] @relation("FeatureContributorAssignmentBy")
 
   @@map("users")
 }
@@ -173,7 +194,11 @@ model Portfolio {
 
   estimatedBudget Decimal?        @db.Decimal(15, 2) @map("estimated_budget")
   actualCost      Decimal?        @db.Decimal(15, 2) @default(0) @map("actual_cost")
-  costCurrency    String?         @default("USD") @db.VarChar(3) @map("cost_currency")
+  costCurrency    String?         @default("SAR") @db.VarChar(3) @map("cost_currency")
+
+  resourceAllocations PortfolioResourceAllocation[]
+  hostingCosts        HostingCost[]
+  lookupFeatures      LookupFeature[]
 
   @@map("portfolios")
 }
@@ -218,10 +243,11 @@ model Product {
   features        Feature[]
   documents       Document[]
   productManagerAssignments ProductManagerAssignment[]
+  resourceAssignments ResourceAssignment[]
 
   estimatedCost   Decimal?        @db.Decimal(15, 2) @map("estimated_cost")
   actualCost      Decimal?        @db.Decimal(15, 2) @default(0) @map("actual_cost")
-  costCurrency    String?         @default("USD") @db.VarChar(3) @map("cost_currency")
+  costCurrency    String?         @default("SAR") @db.VarChar(3) @map("cost_currency")
 
   @@unique([portfolioId, code])
   @@map("products")
@@ -265,7 +291,7 @@ model Release {
   postReleaseNotes    String?         @map("post_release_notes")
   estimatedCost       Decimal?        @db.Decimal(15, 2) @map("estimated_cost")
   actualCost          Decimal?        @db.Decimal(15, 2) @default(0) @map("actual_cost")
-  costCurrency        String?         @default("USD") @db.VarChar(3) @map("cost_currency")
+  costCurrency        String?         @default("SAR") @db.VarChar(3) @map("cost_currency")
   createdAt           DateTime        @default(now()) @map("created_at")
   updatedAt           DateTime        @updatedAt @map("updated_at")
 
@@ -300,7 +326,7 @@ model Feature {
   estimatedEffort     Decimal?      @db.Decimal(10, 2) @map("estimated_effort")
   estimatedCost       Decimal?      @db.Decimal(15, 2) @map("estimated_cost")
   actualCost          Decimal?      @db.Decimal(15, 2) @default(0) @map("actual_cost")
-  costCurrency        String?       @default("USD") @db.VarChar(3) @map("cost_currency")
+  costCurrency        String?       @default("SAR") @db.VarChar(3) @map("cost_currency")
   createdAt           DateTime      @default(now()) @map("created_at")
   updatedAt           DateTime      @updatedAt @map("updated_at")
   archivedAt          DateTime?     @map("archived_at")
@@ -312,24 +338,8 @@ model Feature {
   archivedBy          User?         @relation("FeatureArchivedBy", fields: [archivedById], references: [id])
 
   documents           Document[]
-  featureContributorAssignments FeatureContributorAssignment[]
 
   @@map("features")
-}
-
-model FeatureContributorAssignment {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  featureId   String   @map("feature_id")
-  assignedAt  DateTime @default(now()) @map("assigned_at")
-  assignedById String? @map("assigned_by")
-
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  feature     Feature  @relation(fields: [featureId], references: [id], onDelete: Cascade)
-  assignedBy  User?    @relation("FeatureContributorAssignmentBy", fields: [assignedById], references: [id])
-
-  @@unique([userId, featureId])
-  @@map("feature_contributor_assignments")
 }
 
 model Document {
@@ -371,6 +381,8 @@ model AuditLog {
 
   actor         User?       @relation(fields: [actorUserId], references: [id])
 
+  @@index([entityType, action])
+  @@index([timestamp(sort: Desc)])
   @@map("audit_log")
 }
 
@@ -380,8 +392,8 @@ model CostEntry {
   entityId        String      @map("entity_id")
   description     String
   amount          Decimal     @db.Decimal(15, 2)
-  currency        String      @default("USD") @db.VarChar(3)
-  category        String      @db.VarChar(50) // LABOR, INFRASTRUCTURE, LICENSING, THIRD_PARTY, OTHER
+  currency        String      @default("SAR") @db.VarChar(3)
+  category        CostCategory
   date            DateTime    @db.Date
   recordedById    String      @map("recorded_by")
   createdAt       DateTime    @default(now()) @map("created_at")
@@ -391,4 +403,186 @@ model CostEntry {
 
   @@index([entityType, entityId])
   @@map("cost_entries")
+}
+
+model ResourceAssignment {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  productId         String    @map("product_id")
+  releaseId         String?   @map("release_id")
+  utilisation       Decimal   @db.Decimal(5, 2) @default(0)
+  startDate         DateTime  @map("start_date") @db.Date
+  endDate           DateTime  @map("end_date") @db.Date
+  monthlyRateCached Decimal?  @db.Decimal(15, 2) @map("monthly_rate_cached")
+  assignedById      String?   @map("assigned_by")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product           Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  assignedBy        User?     @relation("ResourceAssignmentBy", fields: [assignedById], references: [id])
+
+  @@unique([userId, productId, releaseId, startDate])
+  @@map("resource_assignments")
+}
+
+// ─── Lookup Tables ───
+
+model LookupPhase {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  allocations PortfolioResourceAllocation[]
+
+  @@map("lookup_phases")
+}
+
+model LookupQuarter {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  allocations PortfolioResourceAllocation[]
+
+  @@map("lookup_quarters")
+}
+
+model LookupTeamType {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  rateCards   RateCard[]
+  allocations PortfolioResourceAllocation[]
+
+  @@map("lookup_team_types")
+}
+
+model LookupPosition {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  allocations PortfolioResourceAllocation[]
+
+  @@map("lookup_positions")
+}
+
+model LookupGradeRole {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  rateCards   RateCard[]
+  allocations PortfolioResourceAllocation[]
+
+  @@map("lookup_grade_roles")
+}
+
+model LookupFeature {
+  id          String   @id @default(uuid())
+  portfolioId String   @map("portfolio_id")
+  name        String
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  allocations PortfolioResourceAllocation[]
+
+  @@unique([portfolioId, name])
+  @@map("lookup_features")
+}
+
+// ─── Rate Card ───
+
+model RateCard {
+  id            String    @id @default(uuid())
+  teamTypeId    String    @map("team_type_id")
+  gradeRoleId   String    @map("grade_role_id")
+  monthlyCost   Decimal   @db.Decimal(15, 2) @map("monthly_cost")
+  dailyCost     Decimal   @db.Decimal(15, 2) @map("daily_cost")
+  hourlyCost    Decimal   @db.Decimal(15, 2) @map("hourly_cost")
+  currency      String    @default("SAR") @db.VarChar(3)
+  effectiveFrom DateTime? @map("effective_from") @db.Date
+  effectiveTo   DateTime? @map("effective_to") @db.Date
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  teamType      LookupTeamType  @relation(fields: [teamTypeId], references: [id], onDelete: Restrict)
+  gradeRole     LookupGradeRole @relation(fields: [gradeRoleId], references: [id], onDelete: Restrict)
+
+  @@unique([teamTypeId, gradeRoleId, effectiveFrom])
+  @@map("rate_cards")
+}
+
+// ─── Portfolio Resource Allocation (the main Excel-like table) ───
+
+model PortfolioResourceAllocation {
+  id                   String   @id @default(uuid())
+  portfolioId          String   @map("portfolio_id")
+  featureId            String?  @map("feature_id")
+  phaseId              String   @map("phase_id")
+  quarterId            String?  @map("quarter_id")
+  teamTypeId           String   @map("team_type_id")
+  positionId           String?  @map("position_id")
+  gradeRoleId          String   @map("grade_role_id")
+  hourlyCostSnapshot   Decimal  @db.Decimal(15, 2) @map("hourly_cost_snapshot")
+  actualHours          Decimal  @db.Decimal(10, 2) @map("actual_hours")
+  utilization          Decimal  @db.Decimal(5, 4) @map("utilization")
+  actualCostComputed   Decimal  @db.Decimal(15, 2) @map("actual_cost_computed")
+  durationDaysComputed Decimal  @db.Decimal(10, 2) @map("duration_days_computed")
+  currency             String   @default("SAR") @db.VarChar(3)
+  createdById          String?  @map("created_by")
+  updatedById          String?  @map("updated_by")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  portfolio            Portfolio       @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  feature              LookupFeature?  @relation(fields: [featureId], references: [id], onDelete: SetNull)
+  phase                LookupPhase     @relation(fields: [phaseId], references: [id], onDelete: Restrict)
+  quarter              LookupQuarter?  @relation(fields: [quarterId], references: [id], onDelete: SetNull)
+  teamType             LookupTeamType  @relation(fields: [teamTypeId], references: [id], onDelete: Restrict)
+  position             LookupPosition? @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  gradeRole            LookupGradeRole @relation(fields: [gradeRoleId], references: [id], onDelete: Restrict)
+
+  @@index([portfolioId])
+  @@map("portfolio_resource_allocations")
+}
+
+// ─── Hosting / Non-Labor Costs ───
+
+model HostingCost {
+  id          String              @id @default(uuid())
+  portfolioId String              @map("portfolio_id")
+  category    HostingCostCategory
+  amount      Decimal             @db.Decimal(15, 2)
+  currency    String              @default("SAR") @db.VarChar(3)
+  notes       String?
+  period      String?             @db.VarChar(50)
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  portfolio   Portfolio           @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
+  @@map("hosting_costs")
 }

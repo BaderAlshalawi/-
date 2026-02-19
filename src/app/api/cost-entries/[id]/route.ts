@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 import { z } from 'zod'
-import { EntityType } from '@prisma/client'
 import { getCurrentUser } from '@/lib/auth'
 import { canPerform } from '@/lib/permissions'
 import { createAuditLog } from '@/lib/audit'
 import { prisma } from '@/lib/prisma'
 import { updateCostRollups, type CostEntityType } from '@/lib/cost-calculator'
-import { AuditAction, type User } from '@/types'
+import { AuditAction, EntityType, type User } from '@/types'
 
 const updateCostEntrySchema = z.object({
   description: z.string().min(1).max(2000).optional(),

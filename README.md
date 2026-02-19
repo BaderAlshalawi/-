@@ -1,6 +1,6 @@
-# Lean Portfolio Management System - V1
+# LeanPulse
 
-A complete Portfolio/Product/Feature/Release Management System with full RBAC, governance workflows, and audit logging.
+An enterprise governance platform for managing technology investments across Portfolios, Products, Releases, and Features — with full RBAC, governance workflows, and audit logging.
 
 ## 🚀 Quick Start
 
@@ -68,7 +68,7 @@ npm run dev
 ## 📁 Project Structure
 
 ```
-lean-portfolio-system/
+leanpulse/
 ├── prisma/
 │   └── schema.prisma          # Database schema
 ├── src/
@@ -93,11 +93,9 @@ lean-portfolio-system/
 
 ## 🔐 Roles & Permissions
 
-- **SUPER_ADMIN**: Full system access, can freeze system
-- **ADMIN**: User management, audit log access (cannot edit business entities)
-- **PROGRAM_MANAGER**: Manages assigned portfolio and products
-- **PRODUCT_MANAGER**: Manages assigned products and features
-- **CONTRIBUTOR**: Can edit assigned features when IN_PROGRESS
+- **SUPER_ADMIN**: Supreme governance authority — full system access, user management, portfolio approval, system freeze
+- **PROGRAM_MANAGER**: Manages assigned portfolio and products, records Go/No-Go decisions
+- **PRODUCT_MANAGER**: Manages assigned products, features, releases, and cost entries
 - **VIEWER**: Read-only access to all entities
 
 ## 🎯 Key Features

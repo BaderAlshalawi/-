@@ -1,540 +1,381 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { useAuthStore } from '@/store/authStore'
 import { useRouter } from 'next/navigation'
 import { LineChart } from '@/components/charts/LineChart'
 import { DoughnutChart } from '@/components/charts/DoughnutChart'
 import { BarChart } from '@/components/charts/BarChart'
+import Link from 'next/link'
+import {
+  FolderKanban, Package, Rocket, Zap, DollarSign, TrendingUp,
+  AlertCircle, Clock, ChevronRight,
+} from 'lucide-react'
 
-type TimePeriod = 'year' | 'month' | 'week'
+interface DashboardData {
+  kpis: {
+    totalPortfolios: number
+    stateBreakdown: Record<string, number>
+    totalProducts: number
+    activeReleases: number
+    featuresInProgress: number
+    totalBudget: number
+    totalActualCost: number
+    variance: number
+    variancePercent: number
+  }
+  costTrend: Array<{ month: string; total: number }>
+  categoryBreakdown: Array<{ category: string; total: number }>
+  portfolioComparison: Array<{
+    id: string; name: string; estimatedBudget: number; actualCost: number
+  }>
+}
+
+interface PendingAction {
+  type: string
+  entityType: string
+  entityId: string
+  entityName: string
+  entityCode?: string
+  submittedAt: string
+  submittedBy: { name: string; email: string } | null
+  isOverdue: boolean
+  action: string
+  href: string
+}
+
+interface PendingActionsData {
+  pendingActions: PendingAction[]
+  totalPending: number
+  totalOverdue: number
+  slaDays: number
+}
 
 export default function DashboardPage() {
   const router = useRouter()
   const user = useAuthStore((state) => state.user)
-  const [timeView, setTimeView] = useState<TimePeriod>('year')
-  const [selectedYear, setSelectedYear] = useState(2025)
-  const [selectedMonth, setSelectedMonth] = useState(1)
-  const [selectedWeek, setSelectedWeek] = useState(1)
+  const [data, setData] = useState<DashboardData | null>(null)
+  const [pendingData, setPendingData] = useState<PendingActionsData | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Fetch user if not in store
     if (!user) {
       fetch('/api/auth/me')
         .then((res) => res.json())
-        .then((data) => {
-          if (data.user) {
-            useAuthStore.getState().setUser(data.user)
-          } else {
-            router.push('/login')
-          }
+        .then((d) => {
+          if (d.user) useAuthStore.getState().setUser(d.user)
+          else router.push('/login')
         })
         .catch(() => router.push('/login'))
     }
   }, [user, router])
 
-  // Mock data for demonstration (replace with real API data later)
-  const mockMetrics = {
-    year: { revenue: 2100000, cost: 1750000, profit: 350000, products: 8, portfolios: 4 },
-    month: { revenue: 175000, cost: 145833, profit: 29167, products: 8, portfolios: 4 },
-    week: { revenue: 40385, cost: 33654, profit: 6731, products: 8, portfolios: 4 },
-  }
+  const fetchDashboard = useCallback(async () => {
+    try {
+      const [dashRes, pendingRes] = await Promise.all([
+        fetch('/api/dashboard'),
+        fetch('/api/dashboard/pending-actions'),
+      ])
+      if (dashRes.ok) setData(await dashRes.json())
+      if (pendingRes.ok) setPendingData(await pendingRes.json())
+    } catch (e) {
+      console.error('Dashboard fetch error:', e)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
-  const targets = {
-    year: { revenue: 2500000, cost: 1800000, profit: 700000 },
-    month: { revenue: 208333, cost: 150000, profit: 58333 },
-    week: { revenue: 48077, cost: 34615, profit: 13462 },
-  }
-
-  const currentMetrics = mockMetrics[timeView]
-  const currentTarget = targets[timeView]
-
-  const revenueProgress = (currentMetrics.revenue / currentTarget.revenue) * 100
-  const costProgress = (currentMetrics.cost / currentTarget.cost) * 100
-  const profitProgress = (currentMetrics.profit / currentTarget.profit) * 100
-
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ]
+  useEffect(() => {
+    if (user) fetchDashboard()
+  }, [user, fetchDashboard])
 
   const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(val)
+    new Intl.NumberFormat('en-SA', { style: 'currency', currency: 'SAR', minimumFractionDigits: 0 }).format(val)
 
-  // Mock chart data
-  const chartData = useMemo(() => ({
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    revenue: [150000, 185000, 210000, 195000, 230000, 250000],
-    cost: [120000, 135000, 145000, 155000, 160000, 170000]
-  }), [])
-
-  const costBreakdownData = useMemo(() => ({
-    labels: ['Resources', 'CAPEX', 'OPEX'],
-    values: [currentMetrics.cost * 0.5, currentMetrics.cost * 0.3, currentMetrics.cost * 0.2]
-  }), [currentMetrics.cost])
-
-  const portfolioRevenueData = useMemo(() => ({
-    labels: ['Licensing', 'Track & Trace', 'Practitioner Services', 'Insurance Services'],
-    values: [850000, 620000, 380000, 250000]
-  }), [])
-
-  if (!user) {
-    return <div>Loading...</div>
+  const getVarianceColor = (pct: number) => {
+    if (pct <= 0) return 'text-green-600'
+    if (pct <= 10) return 'text-amber-600'
+    return 'text-red-600'
   }
+
+  const getVarianceBg = (pct: number) => {
+    if (pct <= 0) return 'bg-green-500'
+    if (pct <= 10) return 'bg-amber-500'
+    return 'bg-red-500'
+  }
+
+  if (!user || loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-pulse text-muted-foreground">Loading dashboard...</div>
+      </div>
+    )
+  }
+
+  const kpis = data?.kpis
+
+  const chartData = data ? {
+    labels: data.costTrend.map((t) => {
+      const [y, m] = t.month.split('-')
+      return new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString('en', { month: 'short' })
+    }),
+    revenue: data.costTrend.map(() => 0),
+    cost: data.costTrend.map((t) => t.total),
+  } : { labels: [], revenue: [], cost: [] }
+
+  const costBreakdownData = data ? {
+    labels: data.categoryBreakdown.map((c) => c.category.replace('_', ' ')),
+    values: data.categoryBreakdown.map((c) => c.total),
+  } : { labels: [], values: [] }
+
+  const portfolioCompData = data ? {
+    labels: data.portfolioComparison.map((p) => p.name),
+    values: data.portfolioComparison.map((p) => p.estimatedBudget),
+    actualValues: data.portfolioComparison.map((p) => p.actualCost),
+  } : { labels: [], values: [] }
 
   return (
     <div className="space-y-6">
-      {/* Gradient Header Banner */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-white shadow-xl">
-        <h1 className="text-4xl font-bold mb-2">Business Efficiency Department</h1>
-        <p className="text-blue-100 text-lg">Streamline operations and maximize efficiency</p>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#1B365D] to-[#7C3AED] rounded-xl p-8 text-white shadow-xl">
+        <h1 className="text-4xl font-bold mb-2">LeanPulse Dashboard</h1>
+        <p className="text-white/80 text-lg">Portfolio governance and financial oversight at a glance</p>
       </div>
 
-      {/* Time Period Selector */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex-shrink-0">
-              <label className="block text-sm font-medium text-gray-700 mb-2">View Period:</label>
-              <div className="flex bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setTimeView('year')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    timeView === 'year'
-                      ? 'bg-white text-indigo-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Yearly
-                </button>
-                <button
-                  onClick={() => setTimeView('month')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    timeView === 'month'
-                      ? 'bg-white text-indigo-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Monthly
-                </button>
-                <button
-                  onClick={() => setTimeView('week')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    timeView === 'week'
-                      ? 'bg-white text-indigo-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Weekly
-                </button>
+      {/* KPI Cards */}
+      {kpis && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <Card className="border-l-4 border-blue-500 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <CardContent className="p-5">
+              <div className="flex justify-between items-start mb-2">
+                <div className="text-sm text-muted-foreground font-medium">Total Portfolios</div>
+                <FolderKanban className="h-5 w-5 text-blue-500" />
               </div>
-            </div>
-
-            {timeView === 'year' && (
-              <div className="flex-shrink-0">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Year:</label>
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value={2024}>2024</option>
-                  <option value={2025}>2025</option>
-                  <option value={2026}>2026</option>
-                </select>
-              </div>
-            )}
-
-            {timeView === 'month' && (
-              <>
-                <div className="flex-shrink-0">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Month:</label>
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    {months.map((m, i) => (
-                      <option key={i} value={i + 1}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex-shrink-0">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Year:</label>
-                  <select
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value={2024}>2024</option>
-                    <option value={2025}>2025</option>
-                    <option value={2026}>2026</option>
-                  </select>
-                </div>
-              </>
-            )}
-
-            {timeView === 'week' && (
-              <>
-                <div className="flex-shrink-0">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Week:</label>
-                  <select
-                    value={selectedWeek}
-                    onChange={(e) => setSelectedWeek(parseInt(e.target.value))}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    {[...Array(52)].map((_, i) => (
-                      <option key={i} value={i + 1}>
-                        Week {i + 1}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex-shrink-0">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Year:</label>
-                  <select
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value={2024}>2024</option>
-                    <option value={2025}>2025</option>
-                    <option value={2026}>2026</option>
-                  </select>
-                </div>
-              </>
-            )}
-
-            <div className="flex-grow"></div>
-
-            <div className="text-right">
-              <div className="text-sm text-gray-600">Current Period:</div>
-              <div className="text-lg font-bold text-gray-900">
-                {timeView === 'year' && selectedYear}
-                {timeView === 'month' && `${months[selectedMonth - 1]} ${selectedYear}`}
-                {timeView === 'week' && `Week ${selectedWeek}, ${selectedYear}`}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Enhanced KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        {/* Total Revenue Card */}
-        <Card className="border-l-4 border-green-500 shadow-lg hover:shadow-xl transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start mb-2">
-              <div className="text-sm text-gray-600 font-medium">Total Revenue</div>
-              <div className="text-2xl">💰</div>
-            </div>
-            <div className="text-3xl font-bold text-green-600 mb-1">
-              {formatCurrency(currentMetrics.revenue)}
-            </div>
-            <div className="text-xs text-gray-500 mb-3">Expected from features</div>
-
-            <div className="pt-3 border-t border-gray-200">
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-gray-600">Target ({timeView}):</span>
-                <span className="font-semibold text-gray-900">
-                  {formatCurrency(currentTarget.revenue)}
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
-                <div
-                  className={`h-2 rounded-full ${
-                    revenueProgress >= 100
-                      ? 'bg-green-500'
-                      : revenueProgress >= 75
-                      ? 'bg-yellow-500'
-                      : 'bg-red-500'
-                  }`}
-                  style={{ width: `${Math.min(revenueProgress, 100)}%` }}
-                ></div>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span
-                  className={`font-semibold ${
-                    revenueProgress >= 100
-                      ? 'text-green-600'
-                      : revenueProgress >= 75
-                      ? 'text-yellow-600'
-                      : 'text-red-600'
-                  }`}
-                >
-                  {revenueProgress.toFixed(1)}% of target
-                </span>
-                <span className="text-gray-500">
-                  {revenueProgress >= 100 ? '+' : ''}
-                  {formatCurrency(currentMetrics.revenue - currentTarget.revenue)}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Total Cost Card */}
-        <Card className="border-l-4 border-red-500 shadow-lg hover:shadow-xl transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start mb-2">
-              <div className="text-sm text-gray-600 font-medium">Total Cost</div>
-              <div className="text-2xl">💸</div>
-            </div>
-            <div className="text-3xl font-bold text-red-600 mb-1">
-              {formatCurrency(currentMetrics.cost)}
-            </div>
-            <div className="text-xs text-gray-500 mb-3">Resources + CAPEX + OPEX</div>
-
-            <div className="pt-3 border-t border-gray-200">
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-gray-600">Budget ({timeView}):</span>
-                <span className="font-semibold text-gray-900">
-                  {formatCurrency(currentTarget.cost)}
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
-                <div
-                  className={`h-2 rounded-full ${
-                    costProgress <= 100
-                      ? 'bg-green-500'
-                      : costProgress <= 110
-                      ? 'bg-yellow-500'
-                      : 'bg-red-500'
-                  }`}
-                  style={{ width: `${Math.min(costProgress, 100)}%` }}
-                ></div>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span
-                  className={`font-semibold ${
-                    costProgress <= 100
-                      ? 'text-green-600'
-                      : costProgress <= 110
-                      ? 'text-yellow-600'
-                      : 'text-red-600'
-                  }`}
-                >
-                  {costProgress.toFixed(1)}% of budget
-                </span>
-                <span
-                  className={`${
-                    currentMetrics.cost <= currentTarget.cost ? 'text-green-600' : 'text-red-600'
-                  }`}
-                >
-                  {currentMetrics.cost <= currentTarget.cost ? '' : '+'}
-                  {formatCurrency(currentMetrics.cost - currentTarget.cost)}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Net Profit Card */}
-        <Card className="border-l-4 border-emerald-500 shadow-lg hover:shadow-xl transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start mb-2">
-              <div className="text-sm text-gray-600 font-medium">Net Profit</div>
-              <div className="text-2xl">✅</div>
-            </div>
-            <div
-              className={`text-3xl font-bold mb-1 ${
-                currentMetrics.profit >= 0 ? 'text-emerald-600' : 'text-red-600'
-              }`}
-            >
-              {currentMetrics.profit >= 0 ? '' : '-'}
-              {formatCurrency(Math.abs(currentMetrics.profit))}
-            </div>
-            <div className="text-xs text-gray-500 mb-3">
-              Margin: {((currentMetrics.profit / currentMetrics.revenue) * 100).toFixed(1)}%
-            </div>
-
-            <div className="pt-3 border-t border-gray-200">
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-gray-600">Target ({timeView}):</span>
-                <span className="font-semibold text-gray-900">
-                  {formatCurrency(currentTarget.profit)}
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
-                <div
-                  className={`h-2 rounded-full ${
-                    profitProgress >= 100
-                      ? 'bg-green-500'
-                      : profitProgress >= 75
-                      ? 'bg-yellow-500'
-                      : 'bg-red-500'
-                  }`}
-                  style={{ width: `${Math.min(profitProgress, 100)}%` }}
-                ></div>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span
-                  className={`font-semibold ${
-                    profitProgress >= 100
-                      ? 'text-green-600'
-                      : profitProgress >= 75
-                      ? 'text-yellow-600'
-                      : 'text-red-600'
-                  }`}
-                >
-                  {profitProgress.toFixed(1)}% of target
-                </span>
-                <span
-                  className={`${
-                    currentMetrics.profit >= currentTarget.profit ? 'text-green-600' : 'text-red-600'
-                  }`}
-                >
-                  {currentMetrics.profit >= currentTarget.profit ? '+' : ''}
-                  {formatCurrency(currentMetrics.profit - currentTarget.profit)}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Target vs Achieved Card */}
-        <Card className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white border-l-4 border-yellow-400 shadow-lg hover:shadow-xl transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start mb-2">
-              <div className="text-sm font-medium opacity-90">Target vs Achieved</div>
-              <div className="text-2xl">🎯</div>
-            </div>
-
-            <div className="mb-4">
-              <div className="text-xs opacity-80 mb-1">Revenue</div>
-              <div className="flex items-baseline justify-between mb-1">
-                <div>
-                  <div className="text-sm opacity-75">Target</div>
-                  <div className="text-xl font-bold">{formatCurrency(currentTarget.revenue)}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm opacity-75">Achieved</div>
-                  <div className="text-xl font-bold">{formatCurrency(currentMetrics.revenue)}</div>
-                </div>
-              </div>
-              <div className="w-full bg-white bg-opacity-20 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full ${
-                    revenueProgress >= 100 ? 'bg-yellow-300' : 'bg-white bg-opacity-60'
-                  }`}
-                  style={{ width: `${Math.min(revenueProgress, 100)}%` }}
-                ></div>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-white border-opacity-20">
-              <div className="flex items-center justify-between">
-                <div className="text-xs opacity-80">Achievement Rate</div>
-                <div
-                  className={`text-2xl font-bold ${
-                    revenueProgress >= 100 ? 'text-yellow-300' : 'text-white'
-                  }`}
-                >
-                  {revenueProgress.toFixed(0)}%
-                </div>
-              </div>
-              {revenueProgress >= 100 ? (
-                <div className="mt-2 text-xs bg-yellow-300 text-indigo-900 px-2 py-1 rounded font-semibold text-center">
-                  ✓ Target Achieved!
-                </div>
-              ) : (
-                <div className="mt-2 text-xs bg-white bg-opacity-20 px-2 py-1 rounded text-center">
-                  {formatCurrency(currentTarget.revenue - currentMetrics.revenue)} to go
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Products Card */}
-        <Card className="border-l-4 border-purple-500 shadow-lg hover:shadow-xl transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start mb-2">
-              <div className="text-sm text-gray-600 font-medium">Products</div>
-              <div className="text-2xl">🎯</div>
-            </div>
-            <div className="text-3xl font-bold text-purple-600 mb-1">
-              {currentMetrics.products}
-            </div>
-            <div className="text-xs text-gray-500 mb-3">
-              Across {currentMetrics.portfolios} portfolios
-            </div>
-
-            <div className="pt-3 border-t border-gray-200">
-              <div className="text-xs text-gray-600 mb-2">Performance Status:</div>
+              <div className="text-3xl font-bold text-blue-600 mb-2">{kpis.totalPortfolios}</div>
               <div className="flex flex-wrap gap-1">
-                {revenueProgress >= 100 && (
-                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
-                    Revenue ✓
-                  </span>
-                )}
-                {costProgress <= 100 && (
-                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
-                    Budget ✓
-                  </span>
-                )}
-                {profitProgress >= 100 && (
-                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
-                    Profit ✓
-                  </span>
-                )}
+                {Object.entries(kpis.stateBreakdown).map(([state, count]) => (
+                  <Badge key={state} variant="outline" className="text-xs">
+                    {state}: {count}
+                  </Badge>
+                ))}
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-purple-500 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <CardContent className="p-5">
+              <div className="flex justify-between items-start mb-2">
+                <div className="text-sm text-muted-foreground font-medium">Total Products</div>
+                <Package className="h-5 w-5 text-purple-500" />
+              </div>
+              <div className="text-3xl font-bold text-purple-600">{kpis.totalProducts}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-orange-500 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <CardContent className="p-5">
+              <div className="flex justify-between items-start mb-2">
+                <div className="text-sm text-muted-foreground font-medium">Active Releases</div>
+                <Rocket className="h-5 w-5 text-orange-500" />
+              </div>
+              <div className="text-3xl font-bold text-orange-600">{kpis.activeReleases}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-green-500 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <CardContent className="p-5">
+              <div className="flex justify-between items-start mb-2">
+                <div className="text-sm text-muted-foreground font-medium">Features In Progress</div>
+                <Zap className="h-5 w-5 text-green-500" />
+              </div>
+              <div className="text-3xl font-bold text-green-600">{kpis.featuresInProgress}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-red-500 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <CardContent className="p-5">
+              <div className="flex justify-between items-start mb-2">
+                <div className="text-sm text-muted-foreground font-medium">Budget Variance</div>
+                <DollarSign className="h-5 w-5 text-red-500" />
+              </div>
+              <div className={`text-2xl font-bold ${getVarianceColor(kpis.variancePercent)}`}>
+                {kpis.variancePercent > 0 ? '+' : ''}{kpis.variancePercent}%
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {formatCurrency(kpis.totalActualCost)} / {formatCurrency(kpis.totalBudget)}
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div
+                  className={`h-2 rounded-full ${getVarianceBg(kpis.variancePercent)}`}
+                  style={{ width: `${Math.min(kpis.totalBudget > 0 ? (kpis.totalActualCost / kpis.totalBudget) * 100 : 0, 100)}%` }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Financial Overview Cards */}
+      {kpis && (user.role === 'SUPER_ADMIN' || user.role === 'PROGRAM_MANAGER') && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-4 w-4 text-green-500" />
+                <span className="text-sm text-muted-foreground">Total Budget</span>
+              </div>
+              <div className="text-2xl font-bold">{formatCurrency(kpis.totalBudget)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="h-4 w-4 text-blue-500" />
+                <span className="text-sm text-muted-foreground">Total Actual Cost</span>
+              </div>
+              <div className="text-2xl font-bold">{formatCurrency(kpis.totalActualCost)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className={`h-4 w-4 ${getVarianceColor(kpis.variancePercent)}`} />
+                <span className="text-sm text-muted-foreground">Variance</span>
+              </div>
+              <div className={`text-2xl font-bold ${getVarianceColor(kpis.variancePercent)}`}>
+                {formatCurrency(kpis.variance)}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {data && (user.role === 'SUPER_ADMIN' || user.role === 'PROGRAM_MANAGER') && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Cost Trend (12 Months)</CardTitle>
+              <CardDescription>Monthly actual cost across all portfolios</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <LineChart data={chartData} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Cost by Category</CardTitle>
+              <CardDescription>Total actual cost breakdown by category</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                {costBreakdownData.values.length > 0 ? (
+                  <DoughnutChart data={costBreakdownData} />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    No cost data available
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Portfolio Comparison */}
+      {data && data.portfolioComparison.length > 0 && (user.role === 'SUPER_ADMIN' || user.role === 'PROGRAM_MANAGER') && (
         <Card>
           <CardHeader>
-            <CardTitle>Revenue & Cost Trend</CardTitle>
-            <CardDescription>Monthly performance overview</CardDescription>
+            <CardTitle>Portfolio Budget vs Actual Cost</CardTitle>
+            <CardDescription>Estimated budget compared to actual cost per portfolio</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-64">
-              <LineChart data={chartData} />
+              <BarChart data={portfolioCompData} />
+            </div>
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {data.portfolioComparison.map((p) => {
+                const variance = p.actualCost - p.estimatedBudget
+                const variancePct = p.estimatedBudget > 0 ? (variance / p.estimatedBudget) * 100 : 0
+                return (
+                  <Link key={p.id} href={`/portfolios/${p.id}`} className="block">
+                    <div className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="font-medium text-sm">{p.name}</div>
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-xs text-muted-foreground">
+                          {formatCurrency(p.actualCost)} / {formatCurrency(p.estimatedBudget)}
+                        </span>
+                        <span className={`text-xs font-medium ${getVarianceColor(variancePct)}`}>
+                          {variancePct > 0 ? '+' : ''}{variancePct.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
           </CardContent>
         </Card>
+      )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Cost Distribution</CardTitle>
-            <CardDescription>Resources, CAPEX, and OPEX breakdown</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64">
-              <DoughnutChart data={costBreakdownData} />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Portfolio Revenue Chart */}
+      {/* Pending Actions */}
       <Card>
         <CardHeader>
-          <CardTitle>Portfolio Revenue Comparison</CardTitle>
-          <CardDescription>Revenue distribution across portfolios</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64">
-            <BarChart data={portfolioRevenueData} />
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                Action Required
+                {pendingData && pendingData.totalPending > 0 && (
+                  <Badge variant="destructive">{pendingData.totalPending}</Badge>
+                )}
+              </CardTitle>
+              <CardDescription>Items requiring your attention</CardDescription>
+            </div>
+            {pendingData && pendingData.totalOverdue > 0 && (
+              <Badge className="bg-amber-500 text-white">
+                <Clock className="h-3 w-3 mr-1" />
+                {pendingData.totalOverdue} Overdue (SLA: {pendingData.slaDays} days)
+              </Badge>
+            )}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Action Required Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Action Required</CardTitle>
-          <CardDescription>Items requiring your attention</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-500">No pending actions</p>
+          {pendingData && pendingData.pendingActions.length > 0 ? (
+            <div className="space-y-2">
+              {pendingData.pendingActions.map((action) => (
+                <Link key={`${action.entityType}-${action.entityId}`} href={action.href}>
+                  <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${action.isOverdue ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                      <div>
+                        <div className="font-medium text-sm flex items-center gap-2">
+                          {action.entityName}
+                          {action.isOverdue && (
+                            <Badge className="bg-amber-100 text-amber-800 text-xs">Overdue</Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {action.action} &middot; Submitted by {action.submittedBy?.name || 'Unknown'} on{' '}
+                          {action.submittedAt ? new Date(action.submittedAt).toLocaleDateString() : 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">{action.entityType}</Badge>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-4">No pending actions</p>
+          )}
         </CardContent>
       </Card>
     </div>

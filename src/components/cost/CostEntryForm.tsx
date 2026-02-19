@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { EntityType } from '@prisma/client'
+import { EntityType } from '@/types'
 
 const CATEGORIES = [
   'LABOR',
@@ -58,7 +58,7 @@ export function CostEntryForm({
       : ''
   )
   const [currency, setCurrency] = useState(
-    defaultValues?.currency ?? 'USD'
+    defaultValues?.currency ?? 'SAR'
   )
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>(
     defaultValues?.category ?? 'LABOR'

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 import { getCurrentUser } from '@/lib/auth'
 import { canPerform } from '@/lib/permissions'
 import { freezeSystem, unfreezeSystem } from '@/lib/system'

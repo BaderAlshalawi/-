@@ -3,7 +3,16 @@ import jwt, { SignOptions } from 'jsonwebtoken'
 import { prisma } from './prisma'
 import bcrypt from 'bcryptjs'
 
-const JWT_SECRET: string = process.env.JWT_SECRET || 'QeP0lhWxsnqeM/PvKucL9ZG8r+GeXHXEiStM7+4KF9c='
+const JWT_SECRET: string = (() => {
+  const secret = process.env.JWT_SECRET
+  if (!secret) {
+    throw new Error('FATAL: JWT_SECRET environment variable is not set. Refusing to start with a hardcoded fallback (RISK-01).')
+  }
+  if (secret.length < 32) {
+    throw new Error('FATAL: JWT_SECRET must be at least 32 characters long.')
+  }
+  return secret
+})()
 const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '7d'
 
 export interface JWTPayload {
@@ -122,13 +131,11 @@ export async function getCurrentUser(request: NextRequest) {
       }
 
       return user
-    } catch (dbError: any) {
-      // If database is unavailable, log error and return null
-      // This ensures security - we can't verify user status without database
-      console.error('Database error in getCurrentUser:', dbError?.message || dbError)
+    } catch (dbError: unknown) {
+      const err = dbError as { code?: string; message?: string }
+      console.error('Database error in getCurrentUser:', err?.message || dbError)
 
-      // Check if it's a connection error
-      if (dbError?.code === 'P1001' || dbError?.message?.includes('Can\'t reach database')) {
+      if (err?.code === 'P1001' || err?.message?.includes('Can\'t reach database')) {
         console.error('Database connection failed - user authentication unavailable')
       }
 

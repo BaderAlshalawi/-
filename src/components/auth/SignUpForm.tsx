@@ -23,10 +23,8 @@ const signUpSchema = z.object({
   confirmPassword: z.string().min(1, 'Please confirm your password'),
   role: z.enum([
     UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
     UserRole.PROGRAM_MANAGER,
     UserRole.PRODUCT_MANAGER,
-    UserRole.CONTRIBUTOR,
     UserRole.VIEWER,
   ]),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -171,14 +169,12 @@ export function SignUpForm() {
           <select
             id="role"
             {...register('role')}
-            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
           >
             <option value={UserRole.VIEWER}>Viewer - Read-only access</option>
-            <option value={UserRole.CONTRIBUTOR}>Contributor - Can contribute to features</option>
-            <option value={UserRole.PRODUCT_MANAGER}>Product Manager - Manage products</option>
+            <option value={UserRole.PRODUCT_MANAGER}>Product Manager - Manage products & features</option>
             <option value={UserRole.PROGRAM_MANAGER}>Program Manager - Manage portfolios</option>
-            <option value={UserRole.ADMIN}>Admin - Full administrative access</option>
-            <option value={UserRole.SUPER_ADMIN}>Super Admin - System administrator</option>
+            <option value={UserRole.SUPER_ADMIN}>Super Admin - Full system administration</option>
           </select>
           {errors.role && (
             <p className="mt-1 text-sm text-red-600">{errors.role.message}</p>
@@ -200,7 +196,7 @@ export function SignUpForm() {
         <span className="text-gray-600">Already have an account? </span>
         <a
           href="/login"
-          className="font-medium text-blue-600 hover:text-blue-500"
+          className="font-medium text-accent-foreground hover:underline"
         >
           Sign in
         </a>

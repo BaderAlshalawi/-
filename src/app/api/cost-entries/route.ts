@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 import { z } from 'zod'
-import { EntityType } from '@prisma/client'
 import { getCurrentUser } from '@/lib/auth'
 import { canPerform } from '@/lib/permissions'
 import { createAuditLog } from '@/lib/audit'
 import { prisma } from '@/lib/prisma'
 import { updateCostRollups, type CostEntityType } from '@/lib/cost-calculator'
-import { AuditAction } from '@/types'
-import type { User } from '@/types'
+import { AuditAction, EntityType, type User } from '@/types'
 
 const costEntityTypeEnum = z.enum([
   'PORTFOLIO',
@@ -113,6 +112,29 @@ export async function POST(request: NextRequest) {
     const { entityType, entityId, description, amount, currency, category, date } =
       parsed.data
 
+    // FR51: Enforce currency matches portfolio's costCurrency
+    let portfolioCurrency: string | null = null
+    if (entityType === 'PORTFOLIO') {
+      const portfolio = await prisma.portfolio.findUnique({ where: { id: entityId }, select: { costCurrency: true } })
+      portfolioCurrency = portfolio?.costCurrency || null
+    } else if (entityType === 'PRODUCT') {
+      const product = await prisma.product.findUnique({ where: { id: entityId }, select: { portfolio: { select: { costCurrency: true } } } })
+      portfolioCurrency = product?.portfolio?.costCurrency || null
+    } else if (entityType === 'FEATURE') {
+      const feature = await prisma.feature.findUnique({ where: { id: entityId }, select: { product: { select: { portfolio: { select: { costCurrency: true } } } } } })
+      portfolioCurrency = feature?.product?.portfolio?.costCurrency || null
+    } else if (entityType === 'RELEASE') {
+      const release = await prisma.release.findUnique({ where: { id: entityId }, select: { product: { select: { portfolio: { select: { costCurrency: true } } } } } })
+      portfolioCurrency = release?.product?.portfolio?.costCurrency || null
+    }
+
+    if (portfolioCurrency && currency.toUpperCase() !== portfolioCurrency.toUpperCase()) {
+      return NextResponse.json(
+        { error: `Currency must match portfolio currency ${portfolioCurrency}` },
+        { status: 400 }
+      )
+    }
+
     const entry = await prisma.$transaction(async (tx) => {
       const created = await tx.costEntry.create({
         data: {
@@ -142,7 +164,7 @@ export async function POST(request: NextRequest) {
     await createAuditLog({
       actor: user as User,
       action: AuditAction.CREATE,
-      entityType: EntityType.SYSTEM,
+      entityType: EntityType.COST_ENTRY,
       entityId: entry.id,
       entityName: `Cost entry: ${description}`,
       changedFields: {

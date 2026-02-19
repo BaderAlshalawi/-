@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 import { prisma } from '@/lib/prisma'
-import { requireMinRole } from '@/lib/rbac'
+import { requireMinRole } from '@/lib/rbac-server'
 import { UserRole } from '@/types'
 
 /**
- * Example protected API route - Only ADMIN and above can access
+ * Protected API route - Only SUPER_ADMIN can access (BRD v3.0)
  * GET /api/admin/users - List all users
  */
 export async function GET(request: NextRequest) {
-  // Require ADMIN role or higher
-  const auth = await requireMinRole(request, UserRole.ADMIN)
+  const auth = await requireMinRole(request, UserRole.SUPER_ADMIN)
 
   if (!auth.authorized) {
     return auth.response

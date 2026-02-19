@@ -15,24 +15,31 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  UserCog,
+  List,
+  CreditCard,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useLocaleStore } from '@/store/localeStore'
 import { UserRole } from '@/types'
 import { userHasMinRole } from '@/lib/rbac'
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Portfolios', href: '/portfolios', icon: FolderKanban },
-  { name: 'Products', href: '/products', icon: Package },
-  { name: 'Features', href: '/features', icon: Zap },
-  { name: 'Releases', href: '/releases', icon: Rocket },
-  { name: 'Documents', href: '/documents', icon: FileText },
+  { key: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { key: 'nav.portfolios', href: '/portfolios', icon: FolderKanban },
+  { key: 'nav.products', href: '/products', icon: Package },
+  { key: 'nav.features', href: '/features', icon: Zap },
+  { key: 'nav.releases', href: '/releases', icon: Rocket },
+  { key: 'nav.documents', href: '/documents', icon: FileText },
 ]
 
 const adminNavigation = [
-  { name: 'Users', href: '/admin/users', icon: Users },
-  { name: 'Audit Log', href: '/admin/audit-log', icon: Shield },
-  { name: 'Config', href: '/admin/config', icon: Settings },
+  { key: 'nav.users', href: '/admin/users', icon: Users },
+  { key: 'nav.resources', href: '/admin/resources', icon: UserCog },
+  { key: 'nav.lookups', href: '/admin/lookups', icon: List },
+  { key: 'nav.rateCards', href: '/admin/rate-cards', icon: CreditCard },
+  { key: 'nav.auditLog', href: '/admin/audit-log', icon: Shield },
+  { key: 'nav.config', href: '/admin/config', icon: Settings },
 ]
 
 // Logo Component
@@ -40,8 +47,8 @@ const Logo = ({ size = 40 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 200 200" className="flex-shrink-0">
     <defs>
       <linearGradient id="logoGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" style={{ stopColor: '#3B82F6' }} />
-        <stop offset="100%" style={{ stopColor: '#8B5CF6' }} />
+        <stop offset="0%" style={{ stopColor: '#1B365D' }} />
+        <stop offset="100%" style={{ stopColor: '#7C3AED' }} />
       </linearGradient>
     </defs>
     {[30, 45, 60, 75, 90, 105].map((y, i) => (
@@ -72,10 +79,10 @@ const Logo = ({ size = 40 }: { size?: number }) => (
       fontFamily="Arial"
       fontSize="40"
       fontWeight="bold"
-      fill="#1E40AF"
+      fill="#1B365D"
       textAnchor="middle"
     >
-      Lean
+      LP
     </text>
   </svg>
 )
@@ -88,23 +95,24 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const pathname = usePathname()
   const user = useAuthStore((state) => state.user)
-  const isAdmin = user?.role && userHasMinRole(user.role, UserRole.ADMIN)
+  const t = useLocaleStore((s) => s.t)
+  const isAdmin = user?.role && userHasMinRole(user.role, UserRole.SUPER_ADMIN)
 
   return (
     <aside
       className={cn(
-        'sidebar bg-white border-r border-gray-200 h-screen flex flex-col scrollbar-thin',
+        'sidebar bg-background border-r border-border h-screen flex flex-col scrollbar-thin',
         isOpen ? 'sidebar-expanded' : 'sidebar-collapsed'
       )}
     >
       {/* Header with Logo */}
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="p-4 border-b border-border flex items-center justify-between">
         {isOpen ? (
           <div className="flex items-center space-x-3">
             <Logo size={40} />
             <div>
-              <div className="font-bold text-gray-800 text-lg">Lean</div>
-              <div className="text-xs text-gray-500">Business Efficiency</div>
+              <div className="font-bold text-primary text-lg">LeanPulse</div>
+              <div className="text-xs text-muted-foreground">Enterprise Governance</div>
             </div>
           </div>
         ) : (
@@ -112,13 +120,13 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         )}
         <button
           onClick={onToggle}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-2 hover:bg-muted rounded-lg transition-colors"
           aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
         >
           {isOpen ? (
-            <ChevronLeft className="h-5 w-5 text-gray-600" />
+            <ChevronLeft className="h-5 w-5 text-muted-foreground" />
           ) : (
-            <ChevronRight className="h-5 w-5 text-gray-600" />
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
           )}
         </button>
       </div>
@@ -129,17 +137,17 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
           return (
             <Link
-              key={item.name}
+              key={item.key}
               href={item.href}
               className={cn(
                 'menu-item flex items-center px-4 py-3 rounded-lg',
                 isActive
-                  ? 'active bg-blue-50 text-blue-600'
-                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'active bg-accent text-accent-foreground'
+                  : 'text-foreground hover:bg-muted hover:text-foreground'
               )}
             >
-              <item.icon className={cn('h-5 w-5 flex-shrink-0', isOpen && 'mr-3')} />
-              {isOpen && <span className="font-medium text-sm">{item.name}</span>}
+              <item.icon className={cn('h-5 w-5 flex-shrink-0', isOpen && 'me-3')} />
+              {isOpen && <span className="font-medium text-sm">{t(item.key)}</span>}
             </Link>
           )
         })}
@@ -148,28 +156,28 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         {isAdmin && (
           <>
             {isOpen && (
-              <div className="pt-4 mt-4 border-t border-gray-200">
-                <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                  Admin
+              <div className="pt-4 mt-4 border-t border-border">
+                <p className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  {t('nav.admin')}
                 </p>
               </div>
             )}
-            {!isOpen && <div className="pt-4 mt-4 border-t border-gray-200" />}
+            {!isOpen && <div className="pt-4 mt-4 border-t border-border" />}
             {adminNavigation.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
               return (
                 <Link
-                  key={item.name}
+                  key={item.key}
                   href={item.href}
                   className={cn(
                     'menu-item flex items-center px-4 py-3 rounded-lg',
                     isActive
-                      ? 'active bg-blue-50 text-blue-600'
-                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'active bg-accent text-accent-foreground'
+                      : 'text-foreground hover:bg-muted hover:text-foreground'
                   )}
                 >
-                  <item.icon className={cn('h-5 w-5 flex-shrink-0', isOpen && 'mr-3')} />
-                  {isOpen && <span className="font-medium text-sm">{item.name}</span>}
+                  <item.icon className={cn('h-5 w-5 flex-shrink-0', isOpen && 'me-3')} />
+                  {isOpen && <span className="font-medium text-sm">{t(item.key)}</span>}
                 </Link>
               )
             })}

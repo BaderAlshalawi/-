@@ -30,7 +30,7 @@ export default function ReleasesPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading releases...</p>
         </div>
       </div>
@@ -59,11 +59,11 @@ export default function ReleasesPage() {
 
       {/* Stats Summary */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-l-4 border-orange-500">
+        <Card className="border-l-4 border-orange-500 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Releases</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Releases</p>
                 <p className="text-3xl font-bold text-orange-600">{releases.length}</p>
               </div>
               <Rocket className="h-10 w-10 text-orange-500 opacity-20" />
@@ -71,11 +71,11 @@ export default function ReleasesPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-green-500">
+        <Card className="border-l-4 border-green-500 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Approved</p>
+                <p className="text-sm font-medium text-muted-foreground">Approved</p>
                 <p className="text-3xl font-bold text-green-600">{approvedReleases.length}</p>
               </div>
               <CheckCircle2 className="h-10 w-10 text-green-500 opacity-20" />
@@ -83,14 +83,14 @@ export default function ReleasesPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-blue-500">
+        <Card className="border-l-4 border-primary hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Upcoming</p>
-                <p className="text-3xl font-bold text-blue-600">{upcomingReleases.length}</p>
+                <p className="text-sm font-medium text-muted-foreground">Upcoming</p>
+                <p className="text-3xl font-bold text-primary">{upcomingReleases.length}</p>
               </div>
-              <Clock className="h-10 w-10 text-blue-500 opacity-20" />
+              <Clock className="h-10 w-10 text-primary opacity-20" />
             </div>
           </CardContent>
         </Card>
@@ -102,7 +102,7 @@ export default function ReleasesPage() {
           {releases.map((release) => (
             <Card
               key={release.id}
-              className="card-hover border-2 border-gray-200 hover:border-orange-500 transition-all shadow-lg"
+              className="card-hover border-2 border-border hover:border-orange-500 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 shadow-lg"
             >
               <CardHeader>
                 <div className="flex items-start justify-between mb-3">

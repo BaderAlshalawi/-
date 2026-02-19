@@ -37,22 +37,13 @@ describe.skipIf(skipDb)('RBAC - Role-Based Access Control', () => {
   })
 
   describe('VIEWER permissions', () => {
-    it('should have cost view but not create', async () => {
+    it('should not have cost create access', async () => {
       const user = mockUser(UserRole.VIEWER)
-      expect(await canPerform(user, 'cost:view')).toBe(true)
       expect(await canPerform(user, 'cost:create')).toBe(false)
     })
 
     it('should not create portfolios', async () => {
       const user = mockUser(UserRole.VIEWER)
-      expect(await canPerform(user, 'portfolio:create')).toBe(false)
-    })
-  })
-
-  describe('ADMIN permissions', () => {
-    it('should manage users but not create portfolios', async () => {
-      const user = mockUser(UserRole.ADMIN)
-      expect(await canPerform(user, 'user:create')).toBe(true)
       expect(await canPerform(user, 'portfolio:create')).toBe(false)
     })
   })
@@ -76,9 +67,9 @@ describe.skipIf(skipDb)('RBAC - Role-Based Access Control', () => {
     })
   })
 
-  describe('CONTRIBUTOR permissions', () => {
+  describe('VIEWER permissions (cost)', () => {
     it('should not create products', async () => {
-      const user = mockUser(UserRole.CONTRIBUTOR)
+      const user = mockUser(UserRole.VIEWER)
       expect(
         await canPerform(user, 'product:create', { portfolioId: 'any-id' })
       ).toBe(false)

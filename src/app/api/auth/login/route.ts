@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 import { prisma } from '@/lib/prisma'
 import { verifyPassword, generateToken } from '@/lib/auth'
 import { createAuditLog } from '@/lib/audit'
@@ -27,9 +28,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (user.status !== 'ACTIVE') {
+      try {
+        await createAuditLog({
+          actor: { id: user.id, email: user.email, name: user.name, role: user.role, status: user.status },
+          action: AuditAction.CREATE,
+          entityType: EntityType.USER,
+          entityId: user.id,
+          entityName: user.email,
+          comment: 'Failed login attempt: user inactive',
+        })
+      } catch { /* non-blocking */ }
       return NextResponse.json(
         { error: 'Account is inactive' },
-        { status: 403 }
+        { status: 401 }
       )
     }
 
@@ -79,7 +90,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set('auth-token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/', // Ensure cookie is available for all paths
     })

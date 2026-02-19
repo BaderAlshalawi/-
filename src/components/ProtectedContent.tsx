@@ -16,7 +16,7 @@ interface ProtectedContentProps {
  * Component to conditionally render content based on user role
  *
  * Usage:
- * <ProtectedContent allowedRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+ * <ProtectedContent allowedRoles={[UserRole.SUPER_ADMIN]}>
  *   <AdminPanel />
  * </ProtectedContent>
  *

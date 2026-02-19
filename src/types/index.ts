@@ -1,15 +1,88 @@
-import { 
-  UserRole, 
-  UserStatus, 
-  GovernanceState, 
-  FeatureState, 
-  PriorityLevel,
-  AuditAction,
-  EntityType
-} from '@prisma/client'
+export const UserRole = {
+  SUPER_ADMIN: 'SUPER_ADMIN',
+  PROGRAM_MANAGER: 'PROGRAM_MANAGER',
+  PRODUCT_MANAGER: 'PRODUCT_MANAGER',
+  VIEWER: 'VIEWER',
+} as const
+export type UserRole = (typeof UserRole)[keyof typeof UserRole]
 
-// Export enums - Prisma enums work as both types and values
-export { UserRole, UserStatus, GovernanceState, FeatureState, PriorityLevel, AuditAction, EntityType }
+export const UserStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const
+export type UserStatus = (typeof UserStatus)[keyof typeof UserStatus]
+
+export const GovernanceState = {
+  DRAFT: 'DRAFT',
+  SUBMITTED: 'SUBMITTED',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  LOCKED: 'LOCKED',
+  ARCHIVED: 'ARCHIVED',
+} as const
+export type GovernanceState = (typeof GovernanceState)[keyof typeof GovernanceState]
+
+export const FeatureState = {
+  DISCOVERY: 'DISCOVERY',
+  READY: 'READY',
+  IN_PROGRESS: 'IN_PROGRESS',
+  RELEASED: 'RELEASED',
+  ARCHIVED: 'ARCHIVED',
+} as const
+export type FeatureState = (typeof FeatureState)[keyof typeof FeatureState]
+
+export const PriorityLevel = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL',
+} as const
+export type PriorityLevel = (typeof PriorityLevel)[keyof typeof PriorityLevel]
+
+export const AuditAction = {
+  CREATE: 'CREATE',
+  UPDATE: 'UPDATE',
+  DELETE: 'DELETE',
+  SUBMIT: 'SUBMIT',
+  APPROVE: 'APPROVE',
+  REJECT: 'REJECT',
+  LOCK: 'LOCK',
+  UNLOCK: 'UNLOCK',
+  ASSIGN: 'ASSIGN',
+  UNASSIGN: 'UNASSIGN',
+  DEACTIVATE: 'DEACTIVATE',
+  REACTIVATE: 'REACTIVATE',
+  ARCHIVE: 'ARCHIVE',
+  FREEZE: 'FREEZE',
+  UNFREEZE: 'UNFREEZE',
+} as const
+export type AuditAction = (typeof AuditAction)[keyof typeof AuditAction]
+
+export const EntityType = {
+  PORTFOLIO: 'PORTFOLIO',
+  PRODUCT: 'PRODUCT',
+  FEATURE: 'FEATURE',
+  RELEASE: 'RELEASE',
+  USER: 'USER',
+  DOCUMENT: 'DOCUMENT',
+  SYSTEM: 'SYSTEM',
+  RESOURCE: 'RESOURCE',
+  RESOURCE_ASSIGNMENT: 'RESOURCE_ASSIGNMENT',
+  COST_ENTRY: 'COST_ENTRY',
+  RATE_CARD: 'RATE_CARD',
+  HOSTING_COST: 'HOSTING_COST',
+  LOOKUP: 'LOOKUP',
+} as const
+export type EntityType = (typeof EntityType)[keyof typeof EntityType]
+
+export const CostCategory = {
+  LABOR: 'LABOR',
+  INFRASTRUCTURE: 'INFRASTRUCTURE',
+  LICENSING: 'LICENSING',
+  THIRD_PARTY: 'THIRD_PARTY',
+  OTHER: 'OTHER',
+} as const
+export type CostCategory = (typeof CostCategory)[keyof typeof CostCategory]
 
 export interface User {
   id: string
@@ -45,6 +118,9 @@ export interface Portfolio {
   updatedAt: Date
   archivedAt?: Date | null
   archivedById?: string | null
+  estimatedBudget?: number | null
+  actualCost?: number | null
+  costCurrency?: string | null
   programManager?: User | null
   products?: Product[]
 }
@@ -173,4 +249,90 @@ export interface SystemConfig {
   updatedBy?: string | null
   createdAt: Date
   updatedAt: Date
+}
+
+// ─── Resource Costing Types ───
+
+export const HostingCostCategory = {
+  LICENSE: 'LICENSE',
+  INFRA: 'INFRA',
+  OTHERS: 'OTHERS',
+  INDIRECT: 'INDIRECT',
+} as const
+export type HostingCostCategory = (typeof HostingCostCategory)[keyof typeof HostingCostCategory]
+
+export interface LookupItem {
+  id: string
+  name: string
+  sortOrder: number
+  isActive: boolean
+}
+
+export interface LookupFeatureItem extends LookupItem {
+  portfolioId: string
+}
+
+export interface RateCardItem {
+  id: string
+  teamTypeId: string
+  gradeRoleId: string
+  monthlyCost: number
+  dailyCost: number
+  hourlyCost: number
+  currency: string
+  effectiveFrom?: string | null
+  effectiveTo?: string | null
+  isActive: boolean
+  teamType?: LookupItem
+  gradeRole?: LookupItem
+}
+
+export interface ResourceAllocationItem {
+  id: string
+  portfolioId: string
+  featureId?: string | null
+  phaseId: string
+  quarterId?: string | null
+  teamTypeId: string
+  positionId?: string | null
+  gradeRoleId: string
+  hourlyCostSnapshot: number
+  actualHours: number
+  utilization: number
+  actualCostComputed: number
+  durationDaysComputed: number
+  currency: string
+  feature?: LookupItem | null
+  phase?: LookupItem
+  quarter?: LookupItem | null
+  teamType?: LookupItem
+  position?: LookupItem | null
+  gradeRole?: LookupItem
+}
+
+export interface HostingCostItem {
+  id: string
+  portfolioId: string
+  category: HostingCostCategory
+  amount: number
+  currency: string
+  notes?: string | null
+  period?: string | null
+}
+
+export interface PortfolioFinancialSummary {
+  laborCostTotal: number
+  hostingCostTotal: number
+  portfolioTotalCost: number
+  estimatedBudget: number | null
+  variance: number | null
+  currency: string
+  breakdowns?: {
+    byPhase: Record<string, number>
+    byTeamType: Record<string, number>
+    byFeature: Record<string, number>
+    byQuarter: Record<string, number>
+    byGradeRole: Record<string, number>
+    hostingByCategory: Record<string, number>
+  }
 }

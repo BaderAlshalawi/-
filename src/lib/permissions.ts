@@ -3,19 +3,20 @@ import { UserRole } from '@/types'
 import { prisma } from './prisma'
 import { getSystemConfig } from './system'
 
-/** Minimal user shape needed for permission checks (e.g. from getCurrentUser) */
+/** Minimal user shape needed for permission checks */
 export type UserLike = Pick<User, 'id' | 'role' | 'assignedPortfolioId'>
 
 export type Permission =
-  | 'portfolio:create' | 'portfolio:edit' | 'portfolio:submit' | 'portfolio:approve' | 'portfolio:lock' | 'portfolio:archive'
-  | 'product:create' | 'product:edit' | 'product:submit' | 'product:approve' | 'product:lock' | 'product:archive'
+  | 'portfolio:create' | 'portfolio:edit' | 'portfolio:submit' | 'portfolio:approve' | 'portfolio:reject' | 'portfolio:lock' | 'portfolio:unlock' | 'portfolio:archive'
+  | 'product:create' | 'product:edit' | 'product:submit' | 'product:approve' | 'product:reject' | 'product:lock' | 'product:archive'
   | 'feature:create' | 'feature:edit' | 'feature:transition' | 'feature:archive'
-  | 'release:create' | 'release:edit' | 'release:submit-go-nogo' | 'release:approve-go' | 'release:lock'
+  | 'release:create' | 'release:edit' | 'release:submit-go-nogo' | 'release:decide-go-nogo' | 'release:lock'
   | 'document:upload' | 'document:delete'
   | 'cost:create' | 'cost:edit' | 'cost:delete' | 'cost:view'
   | 'user:create' | 'user:edit' | 'user:deactivate' | 'user:assign'
-  | 'audit:view'
+  | 'audit:view' | 'audit:export'
   | 'system:freeze'
+  | 'resource:manage' | 'resource:view-utilisation' | 'resource:create-assignment' | 'resource:delete-assignment'
 
 interface PermissionContext {
   portfolioId?: string
@@ -24,6 +25,11 @@ interface PermissionContext {
   releaseId?: string
 }
 
+/**
+ * BRD v3.0 Permission Engine
+ * Four-role model: SUPER_ADMIN, PROGRAM_MANAGER, PRODUCT_MANAGER, VIEWER
+ * ADMIN and CONTRIBUTOR roles permanently removed.
+ */
 export async function canPerform(
   user: UserLike,
   permission: Permission,
@@ -31,36 +37,53 @@ export async function canPerform(
 ): Promise<boolean> {
   const { role } = user
 
-  // Super Admin can do everything
+  // SUPER_ADMIN has full authority across all modules
   if (role === UserRole.SUPER_ADMIN) return true
 
-  // Check system freeze (except Super Admin)
-  const systemFrozen = await isSystemFrozen()
-  if (systemFrozen) return false
+  // Check system freeze (all non-SUPER_ADMIN writes blocked when frozen)
+  const writePermissions: Permission[] = [
+    'portfolio:create', 'portfolio:edit', 'portfolio:submit', 'portfolio:approve', 'portfolio:reject',
+    'portfolio:lock', 'portfolio:unlock', 'portfolio:archive',
+    'product:create', 'product:edit', 'product:submit', 'product:approve', 'product:reject', 'product:lock',
+    'feature:create', 'feature:edit', 'feature:transition',
+    'release:create', 'release:edit', 'release:submit-go-nogo', 'release:decide-go-nogo', 'release:lock',
+    'document:upload', 'document:delete',
+    'cost:create', 'cost:edit', 'cost:delete',
+    'user:create', 'user:edit', 'user:deactivate', 'user:assign',
+    'system:freeze', 'resource:manage', 'resource:create-assignment', 'resource:delete-assignment',
+  ]
+
+  if (writePermissions.includes(permission)) {
+    const systemFrozen = await isSystemFrozen()
+    if (systemFrozen) return false
+  }
 
   switch (permission) {
-    // PORTFOLIO PERMISSIONS
+    // ── PORTFOLIO PERMISSIONS ──
     case 'portfolio:create':
-      return false // Only Super Admin
+    case 'portfolio:archive':
+    case 'portfolio:approve':
+    case 'portfolio:reject':
+      return false // SUPER_ADMIN only (already handled above)
 
     case 'portfolio:edit':
     case 'portfolio:submit':
-    case 'portfolio:approve':
-    case 'portfolio:lock':
-      if (role !== 'PROGRAM_MANAGER') return false
+      if (role !== UserRole.PROGRAM_MANAGER) return false
       return user.assignedPortfolioId === context?.portfolioId
 
-    case 'portfolio:archive':
-      return false // Only Super Admin
+    case 'portfolio:lock':
+    case 'portfolio:unlock':
+      if (role !== UserRole.PROGRAM_MANAGER) return false
+      return user.assignedPortfolioId === context?.portfolioId
 
-    // PRODUCT PERMISSIONS
+    // ── PRODUCT PERMISSIONS ──
     case 'product:create':
-      if (role !== 'PROGRAM_MANAGER') return false
+      if (role !== UserRole.PROGRAM_MANAGER) return false
       if (!context?.portfolioId) return false
       return user.assignedPortfolioId === context.portfolioId
 
     case 'product:edit':
-      if (role === 'PROGRAM_MANAGER') {
+      if (role === UserRole.PROGRAM_MANAGER) {
         if (!context?.productId) return false
         const product = await prisma.product.findUnique({
           where: { id: context.productId },
@@ -68,44 +91,33 @@ export async function canPerform(
         })
         return !!(product?.portfolioId && user.assignedPortfolioId === product.portfolioId)
       }
-      if (role === 'PRODUCT_MANAGER') {
+      if (role === UserRole.PRODUCT_MANAGER) {
         if (!context?.productId) return false
         return await isAssignedToProduct(user.id, context.productId)
       }
       return false
 
     case 'product:submit':
-      if (role !== 'PRODUCT_MANAGER') return false
+      if (role !== UserRole.PRODUCT_MANAGER) return false
       if (!context?.productId) return false
       return await isAssignedToProduct(user.id, context.productId)
 
     case 'product:approve':
-      if (role !== 'PROGRAM_MANAGER') return false
-      if (!context?.productId) return false
-      const product = await prisma.product.findUnique({
-        where: { id: context.productId },
-        select: { portfolioId: true },
-      })
-      return !!(product?.portfolioId && user.assignedPortfolioId === product.portfolioId)
-
+    case 'product:reject':
     case 'product:lock':
-      if (role !== 'PROGRAM_MANAGER') return false
+      if (role !== UserRole.PROGRAM_MANAGER) return false
       if (!context?.productId) return false
-      const productForLock = await prisma.product.findUnique({
+      const productForApproval = await prisma.product.findUnique({
         where: { id: context.productId },
         select: { portfolioId: true },
       })
-      return !!(productForLock?.portfolioId && user.assignedPortfolioId === productForLock.portfolioId)
+      return !!(productForApproval?.portfolioId && user.assignedPortfolioId === productForApproval.portfolioId)
 
-    // FEATURE PERMISSIONS
+    // ── FEATURE PERMISSIONS ──
     case 'feature:create':
-      if (role !== 'PRODUCT_MANAGER') return false
-      if (!context?.productId) return false
-      return await isAssignedToProduct(user.id, context.productId)
-
-    case 'feature:edit':
-      if (role === 'PRODUCT_MANAGER') {
-        if (!context?.featureId) return false
+    case 'feature:transition':
+      if (role !== UserRole.PRODUCT_MANAGER) return false
+      if (context?.featureId) {
         const feature = await prisma.feature.findUnique({
           where: { id: context.featureId },
           select: { productId: true },
@@ -113,33 +125,26 @@ export async function canPerform(
         if (!feature?.productId) return false
         return await isAssignedToProduct(user.id, feature.productId)
       }
-      if (role === 'CONTRIBUTOR') {
-        if (!context?.featureId) return false
-        const feature = await prisma.feature.findUnique({
-          where: { id: context.featureId },
-          select: { state: true },
-        })
-        const isAssigned = await isAssignedToFeature(user.id, context.featureId)
-        return isAssigned && feature?.state === 'IN_PROGRESS'
-      }
-      return false
+      if (!context?.productId) return false
+      return await isAssignedToProduct(user.id, context.productId)
 
-    case 'feature:transition':
-      if (role !== 'PRODUCT_MANAGER') return false
+    case 'feature:edit':
+      if (role !== UserRole.PRODUCT_MANAGER) return false
       if (!context?.featureId) return false
-      const featureForTransition = await prisma.feature.findUnique({
+      const featureForEdit = await prisma.feature.findUnique({
         where: { id: context.featureId },
-        select: { productId: true },
+        select: { productId: true, state: true },
       })
-      if (!featureForTransition?.productId) return false
-      return await isAssignedToProduct(user.id, featureForTransition.productId)
+      if (!featureForEdit?.productId) return false
+      if (featureForEdit.state === 'ARCHIVED') return false
+      return await isAssignedToProduct(user.id, featureForEdit.productId)
 
-    // RELEASE PERMISSIONS
+    // ── RELEASE PERMISSIONS ──
     case 'release:create':
     case 'release:edit':
     case 'release:submit-go-nogo':
     case 'release:lock':
-      if (role !== 'PRODUCT_MANAGER') return false
+      if (role !== UserRole.PRODUCT_MANAGER) return false
       if (!context?.releaseId && !context?.productId) return false
       if (context.releaseId) {
         const release = await prisma.release.findUnique({
@@ -154,33 +159,58 @@ export async function canPerform(
       }
       return false
 
-    // COST
+    case 'release:decide-go-nogo':
+      // Program Manager or SUPER_ADMIN only (SUPER_ADMIN handled above)
+      if (role !== UserRole.PROGRAM_MANAGER) return false
+      if (!context?.releaseId) return false
+      const releaseForDecision = await prisma.release.findUnique({
+        where: { id: context.releaseId },
+        select: { product: { select: { portfolioId: true } } },
+      })
+      return !!(releaseForDecision?.product?.portfolioId && user.assignedPortfolioId === releaseForDecision.product.portfolioId)
+
+    // ── COST ──
     case 'cost:view':
-      return true // any authenticated user can view costs for entities they can see
+      return role !== UserRole.VIEWER
     case 'cost:create':
     case 'cost:edit':
     case 'cost:delete':
       return role !== UserRole.VIEWER
 
-    // USER MANAGEMENT
+    // ── USER MANAGEMENT (SUPER_ADMIN only) ──
     case 'user:create':
     case 'user:edit':
     case 'user:deactivate':
     case 'user:assign':
-      return role === UserRole.ADMIN
+      return false // SUPER_ADMIN only
 
-    // AUDIT
+    // ── AUDIT (SUPER_ADMIN only) ──
     case 'audit:view':
-      return role === UserRole.ADMIN
+    case 'audit:export':
+      return false // SUPER_ADMIN only
 
-    // SYSTEM
+    // ── SYSTEM (SUPER_ADMIN only) ──
     case 'system:freeze':
-      return false // Only Super Admin
+      return false // SUPER_ADMIN only
 
-    // DOCUMENTS
+    // ── RESOURCES ──
+    case 'resource:manage':
+    case 'resource:delete-assignment':
+      return false // SUPER_ADMIN only
+    case 'resource:create-assignment':
+      return role === UserRole.PRODUCT_MANAGER
+    case 'resource:view-utilisation':
+      return role === UserRole.PROGRAM_MANAGER || role === UserRole.PRODUCT_MANAGER
+
+    // ── ARCHIVE (SUPER_ADMIN only) ──
+    case 'product:archive':
+    case 'feature:archive':
+      return false // SUPER_ADMIN only
+
+    // ── DOCUMENTS ──
     case 'document:upload':
     case 'document:delete':
-      return role !== 'VIEWER'
+      return role !== UserRole.VIEWER
 
     default:
       return false
@@ -193,18 +223,6 @@ async function isAssignedToProduct(userId: string, productId: string): Promise<b
       userId_productId: {
         userId,
         productId,
-      },
-    },
-  })
-  return !!assignment
-}
-
-async function isAssignedToFeature(userId: string, featureId: string): Promise<boolean> {
-  const assignment = await prisma.featureContributorAssignment.findUnique({
-    where: {
-      userId_featureId: {
-        userId,
-        featureId,
       },
     },
   })

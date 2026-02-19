@@ -13,7 +13,7 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted">
       <SystemBanner />
       <div className="flex">
         <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />

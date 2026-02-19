@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 import { getCurrentUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { canPerform } from '@/lib/permissions'
@@ -32,8 +33,8 @@ export async function POST(
       return NextResponse.json({ error: 'Portfolio not found' }, { status: 404 })
     }
 
-    // Check permissions
-    const hasPermission = await canPerform(user, 'portfolio:approve', {
+    // Check permissions (BRD v3.0: SUPER_ADMIN only)
+    const hasPermission = await canPerform(user, 'portfolio:reject', {
       portfolioId: params.id,
     })
 

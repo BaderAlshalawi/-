@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 import { getCurrentUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { canPerform } from '@/lib/permissions'
@@ -57,13 +58,6 @@ export async function POST(
       await prisma.product.updateMany({
         where: { productManagerId: targetUser.id },
         data: { productManagerId: null },
-      })
-    }
-
-    // For Contributors, remove from feature assignments
-    if (targetUser.role === UserRole.CONTRIBUTOR) {
-      await prisma.featureContributorAssignment.deleteMany({
-        where: { userId: targetUser.id },
       })
     }
 

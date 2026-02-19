@@ -29,7 +29,7 @@ export default function ProductsPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading products...</p>
         </div>
       </div>
@@ -39,11 +39,11 @@ export default function ProductsPage() {
   return (
     <div className="space-y-6">
       {/* Gradient Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-8 text-white shadow-xl">
+      <div className="bg-gradient-to-r from-[#1B365D] to-[#7C3AED] rounded-xl p-8 text-white shadow-xl">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold mb-2">Products</h1>
-            <p className="text-indigo-100 text-lg">Manage and track all your products</p>
+            <p className="text-white/80 text-lg">Manage and track all your products</p>
           </div>
           <Package className="h-16 w-16 opacity-20" />
         </div>
@@ -51,23 +51,23 @@ export default function ProductsPage() {
 
       {/* Stats Summary */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-l-4 border-blue-500">
+        <Card className="border-l-4 border-primary hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Products</p>
-                <p className="text-3xl font-bold text-blue-600">{products.length}</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Products</p>
+                <p className="text-3xl font-bold text-primary">{products.length}</p>
               </div>
-              <Package className="h-10 w-10 text-blue-500 opacity-20" />
+              <Package className="h-10 w-10 text-primary opacity-20" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-green-500">
+        <Card className="border-l-4 border-green-500 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Active Products</p>
+                <p className="text-sm font-medium text-muted-foreground">Active Products</p>
                 <p className="text-3xl font-bold text-green-600">
                   {products.filter((p) => p.governanceState === 'APPROVED').length}
                 </p>
@@ -77,11 +77,11 @@ export default function ProductsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-purple-500">
+        <Card className="border-l-4 border-purple-500 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Portfolios</p>
+                <p className="text-sm font-medium text-muted-foreground">Portfolios</p>
                 <p className="text-3xl font-bold text-purple-600">
                   {new Set(products.map((p) => p.portfolioId)).size}
                 </p>
@@ -98,12 +98,12 @@ export default function ProductsPage() {
           {products.map((product) => (
             <Card
               key={product.id}
-              className="card-hover border-2 border-gray-200 hover:border-indigo-500 transition-all shadow-lg"
+              className="card-hover border-2 border-border hover:border-primary hover:shadow-xl hover:-translate-y-1 transition-all duration-300 shadow-lg"
             >
               <CardHeader>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3 flex-1">
-                    <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
+                    <div className="p-3 bg-gradient-to-br from-[#1B365D] to-[#7C3AED] rounded-lg">
                       <Package className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">

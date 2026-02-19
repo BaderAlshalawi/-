@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 import { getCurrentUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { canPerform } from '@/lib/permissions'
@@ -24,7 +25,7 @@ export async function POST(
     }
 
     // Check permissions
-    const hasPermission = await canPerform(user, 'portfolio:lock', {
+    const hasPermission = await canPerform(user, 'portfolio:unlock', {
       portfolioId: params.id,
     })
 

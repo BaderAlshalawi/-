@@ -35,7 +35,7 @@ describe('Authentication - Login', () => {
     'should return user and token on successful login',
     async () => {
       const res = await POST(
-        loginRequest({ email: 'admin@lean.com', password: 'Admin@123' })
+        loginRequest({ email: 'superadmin@lean.com', password: 'Admin@123' })
       )
       expect(res.status).toBe(200)
       const data = await res.json()

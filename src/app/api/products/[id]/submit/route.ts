@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 import { getCurrentUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { canPerform } from '@/lib/permissions'
@@ -32,10 +33,10 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Validate state
-    if (product.governanceState !== GovernanceState.DRAFT) {
+    // Validate state — allow resubmission after rejection
+    if (product.governanceState !== GovernanceState.DRAFT && product.governanceState !== GovernanceState.REJECTED) {
       return NextResponse.json(
-        { error: 'Product must be in DRAFT state to submit' },
+        { error: 'Product must be in DRAFT or REJECTED state to submit' },
         { status: 400 }
       )
     }

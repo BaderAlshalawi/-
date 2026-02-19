@@ -135,10 +135,10 @@ export function LoginForm() {
       </div>
 
       <div className="text-sm text-center">
-        <span className="text-gray-600">Don't have an account? </span>
+        <span className="text-gray-600">Don&apos;t have an account? </span>
         <a
           href="/signup"
-          className="font-medium text-blue-600 hover:text-blue-500"
+          className="font-medium text-accent-foreground hover:underline"
         >
           Sign up
         </a>

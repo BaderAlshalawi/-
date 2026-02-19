@@ -1,5 +1,5 @@
 {
-  "name": "lean-portfolio-system",
+  "name": "leanpulse",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
@@ -48,6 +49,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -59,8 +61,8 @@
     "@types/supertest": "^6.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
-    "eslint": "^9.0.0",
-    "eslint-config-next": "^16.1.4",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.35",
     "jsdom": "^24.1.0",
     "msw": "^2.12.9",
     "playwright": "^1.58.2",

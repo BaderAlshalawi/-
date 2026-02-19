@@ -1,5 +1,5 @@
 import { Decimal } from '@prisma/client/runtime/library'
-import { EntityType } from '@prisma/client'
+import { EntityType } from '@/types'
 import { prisma } from './prisma'
 
 export type CostEntityType =
@@ -7,6 +7,12 @@ export type CostEntityType =
   | 'PRODUCT'
   | 'FEATURE'
   | 'RELEASE'
+
+/** Transaction client type (same as prisma but for use inside $transaction). */
+type PrismaTx = Omit<
+  typeof prisma,
+  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+>
 
 function toNumber(d: Decimal | null | undefined): number {
   if (d == null) return 0
@@ -17,6 +23,8 @@ function toDecimal(n: number): Decimal {
   return new Decimal(n)
 }
 
+type WithActualCost = { actualCost: Decimal | null }
+
 /**
  * Portfolio total cost = Sum of all child Products' actualCost
  */
@@ -25,7 +33,10 @@ export async function calculatePortfolioCost(portfolioId: string): Promise<Decim
     where: { portfolioId },
     select: { actualCost: true },
   })
-  const total = products.reduce((sum, p) => sum + toNumber(p.actualCost), 0)
+  const total = products.reduce(
+    (sum: number, p: WithActualCost) => sum + toNumber(p.actualCost),
+    0
+  )
   return toDecimal(total)
 }
 
@@ -46,7 +57,10 @@ export async function calculateProductCost(productId: string): Promise<Decimal> 
       _sum: { amount: true },
     }),
   ])
-  const fromFeatures = features.reduce((sum, f) => sum + toNumber(f.actualCost), 0)
+  const fromFeatures = features.reduce(
+    (sum: number, f: WithActualCost) => sum + toNumber(f.actualCost),
+    0
+  )
   const fromEntries = toNumber(directEntries._sum.amount)
   return toDecimal(fromFeatures + fromEntries)
 }
@@ -73,7 +87,10 @@ export async function calculateReleaseCost(releaseId: string): Promise<Decimal> 
     where: { releaseId },
     select: { actualCost: true },
   })
-  const total = features.reduce((sum, f) => sum + toNumber(f.actualCost), 0)
+  const total = features.reduce(
+    (sum: number, f: WithActualCost) => sum + toNumber(f.actualCost),
+    0
+  )
   return toDecimal(total)
 }
 
@@ -85,7 +102,7 @@ export async function updateCostRollups(
   entityType: CostEntityType,
   entityId: string
 ): Promise<void> {
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: PrismaTx) => {
     if (entityType === 'FEATURE') {
       const cost = await calculateFeatureCostInTx(tx, entityId)
       await tx.feature.update({
@@ -129,8 +146,6 @@ export async function updateCostRollups(
   })
 }
 
-type PrismaTx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
-
 async function calculateFeatureCostInTx(
   tx: PrismaTx,
   featureId: string
@@ -153,7 +168,10 @@ async function calculateReleaseCostInTx(
     where: { releaseId },
     select: { actualCost: true },
   })
-  const total = features.reduce((sum, f) => sum + toNumber(f.actualCost), 0)
+  const total = features.reduce(
+    (sum: number, f: WithActualCost) => sum + toNumber(f.actualCost),
+    0
+  )
   return toDecimal(total)
 }
 
@@ -168,7 +186,10 @@ async function rollupProduct(tx: PrismaTx, productId: string): Promise<void> {
       _sum: { amount: true },
     }),
   ])
-  const fromFeatures = features.reduce((sum, f) => sum + toNumber(f.actualCost), 0)
+  const fromFeatures = features.reduce(
+    (sum: number, f: WithActualCost) => sum + toNumber(f.actualCost),
+    0
+  )
   const fromEntries = toNumber(directSum._sum.amount)
   const total = toDecimal(fromFeatures + fromEntries)
   await tx.product.update({
@@ -182,7 +203,24 @@ async function rollupPortfolio(tx: PrismaTx, portfolioId: string): Promise<void>
     where: { portfolioId },
     select: { actualCost: true },
   })
-  const total = products.reduce((sum, p) => sum + toNumber(p.actualCost), 0)
+  const fromProducts = products.reduce(
+    (sum: number, p: WithActualCost) => sum + toNumber(p.actualCost),
+    0
+  )
+
+  const allocSum = await tx.portfolioResourceAllocation.aggregate({
+    where: { portfolioId },
+    _sum: { actualCostComputed: true },
+  })
+  const fromAllocations = toNumber(allocSum._sum.actualCostComputed)
+
+  const hostingSum = await tx.hostingCost.aggregate({
+    where: { portfolioId },
+    _sum: { amount: true },
+  })
+  const fromHosting = toNumber(hostingSum._sum.amount)
+
+  const total = fromProducts + fromAllocations + fromHosting
   await tx.portfolio.update({
     where: { id: portfolioId },
     data: { actualCost: toDecimal(total) },

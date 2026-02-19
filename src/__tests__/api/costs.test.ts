@@ -27,7 +27,7 @@ describe.skipIf(skipDb)('API - Cost Tracking', () => {
       nextRequest('http://localhost:3000/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({
-          email: 'admin@lean.com',
+          email: 'superadmin@lean.com',
           password: 'Admin@123',
         }),
       })

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 import { getCurrentUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { canPerform } from '@/lib/permissions'
@@ -20,11 +21,20 @@ export async function GET(request: NextRequest) {
     const entityType = searchParams.get('entityType')
     const action = searchParams.get('action')
     const entityId = searchParams.get('entityId')
+    const actorEmail = searchParams.get('actorEmail')
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
 
     const where: any = {}
     if (entityType) where.entityType = entityType
     if (action) where.action = action
     if (entityId) where.entityId = entityId
+    if (actorEmail) where.actorEmail = { contains: actorEmail, mode: 'insensitive' }
+    if (startDate || endDate) {
+      where.timestamp = {}
+      if (startDate) where.timestamp.gte = new Date(startDate)
+      if (endDate) where.timestamp.lte = new Date(endDate)
+    }
 
     const [logs, total] = await Promise.all([
       prisma.auditLog.findMany({

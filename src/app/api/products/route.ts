@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 import { getCurrentUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { canPerform } from '@/lib/permissions'
-import type { User } from '@/types'
-import { GovernanceState } from '@prisma/client'
+import { GovernanceState, type User } from '@/types'
 
 export async function GET(request: NextRequest) {
   try {

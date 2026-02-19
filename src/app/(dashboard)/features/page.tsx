@@ -29,7 +29,7 @@ export default function FeaturesPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading features...</p>
         </div>
       </div>
@@ -42,7 +42,7 @@ export default function FeaturesPage() {
   return (
     <div className="space-y-6">
       {/* Gradient Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-8 text-white shadow-xl">
+      <div className="bg-gradient-to-r from-[#7C3AED] to-[#a855f7] rounded-xl p-8 text-white shadow-xl">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold mb-2">Features</h1>
@@ -54,11 +54,11 @@ export default function FeaturesPage() {
 
       {/* Stats Summary */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-l-4 border-purple-500">
+        <Card className="border-l-4 border-purple-500 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Features</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Features</p>
                 <p className="text-3xl font-bold text-purple-600">{features.length}</p>
               </div>
               <Zap className="h-10 w-10 text-purple-500 opacity-20" />
@@ -66,11 +66,11 @@ export default function FeaturesPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-green-500">
+        <Card className="border-l-4 border-green-500 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Completed</p>
+                <p className="text-sm font-medium text-muted-foreground">Completed</p>
                 <p className="text-3xl font-bold text-green-600">{completedFeatures.length}</p>
               </div>
               <CheckCircle2 className="h-10 w-10 text-green-500 opacity-20" />
@@ -78,14 +78,14 @@ export default function FeaturesPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-blue-500">
+        <Card className="border-l-4 border-primary hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">In Progress</p>
-                <p className="text-3xl font-bold text-blue-600">{inProgressFeatures.length}</p>
+                <p className="text-sm font-medium text-muted-foreground">In Progress</p>
+                <p className="text-3xl font-bold text-primary">{inProgressFeatures.length}</p>
               </div>
-              <Clock className="h-10 w-10 text-blue-500 opacity-20" />
+              <Clock className="h-10 w-10 text-primary opacity-20" />
             </div>
           </CardContent>
         </Card>
@@ -97,12 +97,12 @@ export default function FeaturesPage() {
           {features.map((feature) => (
             <Card
               key={feature.id}
-              className="card-hover border-2 border-gray-200 hover:border-purple-500 transition-all shadow-lg"
+              className="card-hover border-2 border-border hover:border-purple-500 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 shadow-lg"
             >
               <CardHeader>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3 flex-1">
-                    <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg">
+                    <div className="p-3 bg-gradient-to-br from-[#7C3AED] to-[#a855f7] rounded-lg">
                       <Zap className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">

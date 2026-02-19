@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { EntityType } from '@prisma/client'
+export const dynamic = 'force-dynamic'
 import { getCurrentUser } from '@/lib/auth'
 import { canPerform } from '@/lib/permissions'
-import type { User } from '@/types'
+import { EntityType, type User } from '@/types'
 import { prisma } from '@/lib/prisma'
 import {
   calculatePortfolioCost,

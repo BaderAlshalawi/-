@@ -30,7 +30,7 @@ interface BudgetVsActualChartProps {
 export function BudgetVsActualChart({
   estimated,
   actual,
-  currency = 'USD',
+  currency = 'SAR',
   loading = false,
 }: BudgetVsActualChartProps) {
   if (loading) {

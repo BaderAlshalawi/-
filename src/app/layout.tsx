@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { LocaleInitializer } from "@/components/layout/LocaleInitializer";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Lean Portfolio Management System",
-  description: "Portfolio, Product, Feature, and Release Management",
+  title: "LeanPulse | Enterprise Governance Platform",
+  description: "LeanPulse — enterprise governance platform for managing technology investments across Portfolios, Products, Releases, and Features.",
 };
 
 export default function RootLayout({
@@ -16,9 +17,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" dir="ltr" suppressHydrationWarning>
       <body className={inter.className}>
-        <Providers>{children}</Providers>
+        <Providers>
+          <LocaleInitializer />
+          {children}
+        </Providers>
       </body>
     </html>
   );

@@ -6,7 +6,7 @@ import { CostSummaryCard, type CostSummaryData } from './CostSummaryCard'
 import { CostBreakdownChart, type CostBreakdownItem } from './CostBreakdownChart'
 import { BudgetVsActualChart } from './BudgetVsActualChart'
 import { CostEntryForm } from './CostEntryForm'
-import { EntityType } from '@prisma/client'
+import { EntityType } from '@/types'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 
@@ -121,7 +121,7 @@ export function PortfolioCostDashboard({
             <BudgetVsActualChart
               estimated={summary?.estimated ?? null}
               actual={summary?.actual ?? 0}
-              currency={summary?.currency ?? 'USD'}
+              currency={summary?.currency ?? 'SAR'}
               loading={summaryQuery.isLoading}
             />
           </CardContent>
@@ -136,7 +136,7 @@ export function PortfolioCostDashboard({
           <CostBreakdownChart
             breakdown={breakdown?.byCategory ?? []}
             total={breakdown?.total ?? 0}
-            currency={summary?.currency ?? 'USD'}
+            currency={summary?.currency ?? 'SAR'}
             loading={breakdownQuery.isLoading}
           />
         </CardContent>

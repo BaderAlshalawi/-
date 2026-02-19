@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button'
 import { AuditLog, EntityType, AuditAction } from '@/types'
 import { formatDateTime } from '@/lib/utils'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Download } from 'lucide-react'
 
 export default function AuditLogPage() {
   const [logs, setLogs] = useState<AuditLog[]>([])
@@ -20,7 +20,7 @@ export default function AuditLogPage() {
     action: '',
   })
 
-  const loadLogs = () => {
+  const loadLogs = useCallback(() => {
     setLoading(true)
     const params = new URLSearchParams({
       page: page.toString(),
@@ -40,11 +40,11 @@ export default function AuditLogPage() {
         console.error(err)
         setLoading(false)
       })
-  }
+  }, [page, filters])
 
   useEffect(() => {
     loadLogs()
-  }, [page, filters])
+  }, [loadLogs])
 
   if (loading && logs.length === 0) {
     return <div>Loading audit log...</div>
@@ -61,10 +61,25 @@ export default function AuditLogPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Audit Log Entries</CardTitle>
-            <Button variant="outline" size="sm" onClick={loadLogs}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const params = new URLSearchParams()
+                  if (filters.entityType) params.append('entityType', filters.entityType)
+                  if (filters.action) params.append('action', filters.action)
+                  window.open(`/api/audit-log/export?${params}`, '_blank')
+                }}
+              >
+                <Download className="h-4 w-4 me-2" />
+                Export CSV
+              </Button>
+              <Button variant="outline" size="sm" onClick={loadLogs}>
+                <RefreshCw className="h-4 w-4 me-2" />
+                Refresh
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

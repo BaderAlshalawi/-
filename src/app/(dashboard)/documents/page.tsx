@@ -55,7 +55,7 @@ export default function DocumentsPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading documents...</p>
         </div>
       </div>
@@ -102,14 +102,14 @@ export default function DocumentsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-blue-500">
+        <Card className="border-l-4 border-primary">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Portfolio Docs</p>
-                <p className="text-3xl font-bold text-blue-600">{portfolioDocs.length}</p>
+                <p className="text-sm font-medium text-muted-foreground">Portfolio Docs</p>
+                <p className="text-3xl font-bold text-primary">{portfolioDocs.length}</p>
               </div>
-              <Folder className="h-10 w-10 text-blue-500 opacity-20" />
+              <Folder className="h-10 w-10 text-primary opacity-20" />
             </div>
           </CardContent>
         </Card>

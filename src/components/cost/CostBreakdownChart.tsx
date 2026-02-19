@@ -26,7 +26,7 @@ const CATEGORY_COLORS = [
 export function CostBreakdownChart({
   breakdown,
   total,
-  currency = 'USD',
+  currency = 'SAR',
   loading = false,
 }: CostBreakdownChartProps) {
   if (loading) {
